@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/musteriler", label: "Müşteriler", icon: Users },
+  { href: "/customers", label: "Müşteriler", icon: Users },
   { href: "/onay-kuyrugu", label: "Onay Kuyruğu", icon: CheckCircle },
   { href: "/ayarlar", label: "Bot Ayarları", icon: Settings },
 ]
