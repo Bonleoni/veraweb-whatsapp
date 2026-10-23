@@ -112,23 +112,178 @@ function toIsoFromWaTimestamp(timestamp: unknown) {
   return new Date(seconds * 1000).toISOString()
 }
 
+function phonesMatch(a: string, b: string) {
+  if (!a || !b) return false
+  return (
+    a === b ||
+    a.endsWith(b) ||
+    b.endsWith(a) ||
+    a.slice(-10) === b.slice(-10)
+  )
+}
+
+function jidUserPart(jid?: string | null) {
+  if (!jid) return ""
+  return normalizePhone(jid.split("@")[0] || "")
+}
+
+type SocketWithLid = WASocket & {
+  store?: {
+    contacts?: Record<
+      string,
+      { id?: string; notify?: string; name?: string } | undefined
+    >
+  }
+  signalRepository?: {
+    lidMapping?: {
+      getPNForLID: (lid: string) => Promise<string | null>
+    }
+  }
+  onWhatsApp?: (
+    ...jids: string[]
+  ) => Promise<Array<{ jid: string; exists: boolean; lid?: string }> | undefined>
+}
+
+/** LID / alt JID alanlarından gerçek telefon numarasını çöz */
+async function resolveSenderPhone(
+  sock: SocketWithLid,
+  params: {
+    remoteJid?: string | null
+    remoteJidAlt?: string | null
+    participant?: string | null
+    participantAlt?: string | null
+  }
+) {
+  const { remoteJid, remoteJidAlt, participant, participantAlt } = params
+  const rawJid = remoteJid || ""
+  const senderRaw = jidUserPart(rawJid)
+
+  console.log(`📨 Gelen mesaj ham JID: ${rawJid}`)
+
+  // 1) Baileys'in verdiği PN alternatifleri (en güvenilir)
+  const altCandidates = [
+    remoteJidAlt,
+    participantAlt,
+    participant,
+    remoteJid,
+  ]
+    .filter(Boolean)
+    .map((j) => String(j))
+
+  for (const jid of altCandidates) {
+    // @s.whatsapp.net veya hosted PN → telefon
+    if (jid.includes("@s.whatsapp.net") || jid.includes("@hosted")) {
+      const phone = jidUserPart(jid)
+      if (phone) {
+        console.log(`🔍 LID Çözümlendi (message.key alt): ${phone}`)
+        return phone
+      }
+    }
+  }
+
+  let resolvedPhone = senderRaw
+
+  try {
+    // 2) signalRepository LID → PN mapping
+    const lidJid = rawJid.endsWith("@lid")
+      ? rawJid
+      : senderRaw
+        ? `${senderRaw}@lid`
+        : ""
+    if (lidJid && sock.signalRepository?.lidMapping?.getPNForLID) {
+      const pn = await sock.signalRepository.lidMapping.getPNForLID(lidJid)
+      if (pn) {
+        const phone = jidUserPart(pn)
+        if (phone) {
+          console.log(`🔍 LID Çözümlendi (lidMapping): ${phone}`)
+          return phone
+        }
+      }
+    }
+
+    // 3) Store contacts
+    const contact =
+      sock.store?.contacts?.[rawJid] ||
+      (senderRaw ? sock.store?.contacts?.[`${senderRaw}@lid`] : undefined)
+    if (contact) {
+      const fromNotify = normalizePhone(contact.notify || "")
+      const fromId = jidUserPart(contact.id)
+      const candidate = fromId || fromNotify
+      if (candidate && candidate !== senderRaw) {
+        console.log(`🔍 LID Çözümlendi (Store): ${candidate}`)
+        return candidate
+      }
+    }
+
+    // 4) onWhatsApp fallback
+    if (typeof sock.onWhatsApp === "function" && rawJid) {
+      const waContacts = await sock.onWhatsApp(rawJid)
+      const hit = waContacts?.[0]
+      if (hit?.exists && hit.jid) {
+        const phone = jidUserPart(hit.jid)
+        if (phone) {
+          console.log(`🔍 LID Çözümlendi (onWhatsApp): ${phone}`)
+          return phone
+        }
+      }
+    }
+  } catch (err) {
+    console.log("⚠️ LID çözümleme hatası:", err)
+  }
+
+  console.log(`🎯 Kullanılacak Telefon (fallback): ${resolvedPhone}`)
+  return resolvedPhone
+}
+
+function findCustomerByPhone(
+  customers: Array<{ id: string; phone: string | null }>,
+  resolvedPhone: string
+) {
+  return customers.find((c) =>
+    phonesMatch(normalizePhone(c.phone || ""), resolvedPhone)
+  )
+}
+
 /** Gelen WhatsApp mesajını müşteriye eşleyip chat_messages'a yazar */
 export async function persistInboundWhatsAppMessage(params: {
+  sock: WASocket
   remoteJid?: string | null
+  remoteJidAlt?: string | null
+  participant?: string | null
+  participantAlt?: string | null
   content: string
   timestamp?: unknown
   fromMe?: boolean
 }) {
-  const { remoteJid, content, timestamp, fromMe } = params
+  const {
+    sock,
+    remoteJid,
+    remoteJidAlt,
+    participant,
+    participantAlt,
+    content,
+    timestamp,
+    fromMe,
+  } = params
 
   if (fromMe) return
   if (!remoteJid || !content.trim()) return
   if (remoteJid === "status@broadcast" || remoteJid.endsWith("@g.us")) return
 
-  const senderPhone = normalizePhone(remoteJid.split("@")[0] || "")
+  const senderPhone = jidUserPart(remoteJid)
   if (!senderPhone) return
 
-  console.log(`📨 Gelen mesaj: ${senderPhone} -> ${content}`)
+  const resolvedPhone = await resolveSenderPhone(sock as SocketWithLid, {
+    remoteJid,
+    remoteJidAlt,
+    participant,
+    participantAlt,
+  })
+
+  console.log(
+    `📨 Gelen mesaj: ham=${senderPhone} çözülen=${resolvedPhone} -> ${content}`
+  )
+  console.log(`🎯 Kullanılacak Telefon: ${resolvedPhone}`)
 
   const { data: customers, error: customersError } = await supabase
     .from("customers")
@@ -139,19 +294,28 @@ export async function persistInboundWhatsAppMessage(params: {
     return
   }
 
-  const customer = (customers ?? []).find((c) => {
-    const phone = normalizePhone(c.phone || "")
-    if (!phone) return false
-    return (
-      phone === senderPhone ||
-      phone.endsWith(senderPhone) ||
-      senderPhone.endsWith(phone) ||
-      phone.slice(-10) === senderPhone.slice(-10)
-    )
-  })
+  const list = customers ?? []
+
+  // Önce çözülen numara, sonra ham LID (kullanıcı LID kaydetmiş olabilir)
+  let customer =
+    findCustomerByPhone(list, resolvedPhone) ||
+    findCustomerByPhone(list, senderPhone)
 
   if (!customer) {
-    console.log(`⚠️ Müşteri bulunamadı: ${senderPhone}`)
+    // Direkt eq denemesi (prompt ile uyumlu ekstra kontrol)
+    const { data: directMatch } = await supabase
+      .from("customers")
+      .select("id, phone")
+      .eq("phone", resolvedPhone)
+      .maybeSingle()
+
+    if (directMatch) customer = directMatch
+  }
+
+  if (!customer) {
+    console.log(
+      `⚠️ Müşteri bulunamadı (Çözümlenen: ${resolvedPhone}, Ham: ${senderPhone})`
+    )
     return
   }
 
@@ -166,7 +330,7 @@ export async function persistInboundWhatsAppMessage(params: {
   if (error) {
     console.error("❌ Mesaj kaydedilemedi:", error)
   } else {
-    console.log("✅ Mesaj kaydedildi:", customer.id)
+    console.log(`✅ Mesaj kaydedildi (Müşteri ID: ${customer.id})`)
   }
 }
 
@@ -181,7 +345,11 @@ export function attachIncomingMessageListener(sock: WASocket) {
         if (!content) continue
 
         await persistInboundWhatsAppMessage({
+          sock,
           remoteJid: message.key.remoteJid,
+          remoteJidAlt: message.key.remoteJidAlt,
+          participant: message.key.participant,
+          participantAlt: message.key.participantAlt,
           content,
           timestamp: message.messageTimestamp,
           fromMe: Boolean(message.key.fromMe),
