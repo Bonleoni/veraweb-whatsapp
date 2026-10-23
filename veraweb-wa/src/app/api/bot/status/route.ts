@@ -5,6 +5,10 @@ export async function GET() {
   try {
     await connection()
     const status = getBotStatus()
+    console.log("📊 /api/bot/status:", {
+      status: status.status,
+      hasQr: Boolean(status.qrCode),
+    })
     return NextResponse.json({
       success: true,
       status: {
@@ -14,9 +18,12 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("Durum alınamadı:", error)
+    console.error("❌ Durum alınamadı:", error)
     return NextResponse.json(
-      { success: false, error: "Durum alınamadı" },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Durum alınamadı",
+      },
       { status: 500 }
     )
   }

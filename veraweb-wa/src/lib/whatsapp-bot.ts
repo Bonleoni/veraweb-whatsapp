@@ -17,74 +17,105 @@ type WhatsAppGlobal = {
   waStarting: boolean
 }
 
-const globalForWa = globalThis as typeof globalThis & WhatsAppGlobal
+// Next.js route'ları arasında state paylaşımı için globalThis şart
+const g = globalThis as typeof globalThis & WhatsAppGlobal
 
-if (typeof globalForWa.waConnectionState === "undefined") {
-  globalForWa.waSocket = null
-  globalForWa.waQrCode = null
-  globalForWa.waConnectionState = "disconnected"
-  globalForWa.waStarting = false
+if (typeof g.waConnectionState === "undefined") {
+  g.waSocket = null
+  g.waQrCode = null
+  g.waConnectionState = "disconnected"
+  g.waStarting = false
 }
 
-function phoneKey() {
+function phoneNumber() {
   return process.env.WHATSAPP_PHONE || "default"
 }
 
-async function upsertSession(patch: Record<string, unknown>) {
-  const { error } = await supabase.from("bot_sessions").upsert({
-    phone_number: phoneKey(),
-    updated_at: new Date().toISOString(),
-    ...patch,
-  })
-  if (error) console.error("bot_sessions upsert:", error)
+async function saveSession(patch: Record<string, unknown>) {
+  try {
+    const { error } = await supabase.from("bot_sessions").upsert({
+      phone_number: phoneNumber(),
+      updated_at: new Date().toISOString(),
+      ...patch,
+    })
+    if (error) console.error("❌ Session kaydı:", error.message)
+  } catch (error) {
+    console.error("❌ Session güncellenemedi:", error)
+  }
 }
 
-async function waitForQrOrConnected(timeoutMs = 12000) {
+async function persistQr(qr: string) {
+  console.log("📱 QR Kod alındı:", qr.substring(0, 50) + "...")
+  try {
+    const dataUrl = await toDataURL(qr, {
+      width: 320,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    })
+    g.waQrCode = dataUrl
+    g.waConnectionState = "connecting"
+    console.log("✅ QR kod DataURL'e dönüştürüldü (len:", dataUrl.length, ")")
+
+    await saveSession({
+      qr_code: dataUrl,
+      status: "connecting",
+    })
+    console.log("✅ QR kod Supabase'e kaydedildi (veya denendi)")
+  } catch (error) {
+    console.error("❌ QR kod işlenemedi:", error)
+  }
+}
+
+async function waitForQrOrConnected(timeoutMs = 15000) {
   const started = Date.now()
   while (Date.now() - started < timeoutMs) {
-    if (globalForWa.waQrCode || globalForWa.waConnectionState === "connected") {
+    if (g.waQrCode || g.waConnectionState === "connected") {
       return getBotStatus()
     }
-    await new Promise((r) => setTimeout(r, 250))
+    await new Promise((r) => setTimeout(r, 300))
   }
   return getBotStatus()
 }
 
-async function teardownSocket() {
-  if (!globalForWa.waSocket) return
-  try {
-    globalForWa.waSocket.end(undefined)
-  } catch (error) {
-    console.error("Socket teardown:", error)
-  }
-  globalForWa.waSocket = null
-}
-
 export async function startWhatsAppBot() {
-  // Zaten bağlıysa yeniden başlatma
-  if (
-    globalForWa.waConnectionState === "connected" &&
-    globalForWa.waSocket
-  ) {
-    console.log("Bot zaten bağlı")
-    return getBotStatus()
+  console.log("🔵 Bot başlatılıyor...")
+  console.log("📱 Telefon numarası:", phoneNumber())
+
+  // Zaten bağlıysa dokunma
+  if (g.waConnectionState === "connected" && g.waSocket) {
+    console.log("⚠️ Bot zaten bağlı")
+    const current = getBotStatus()
+    return {
+      success: true,
+      message: "Bot zaten bağlı",
+      status: {
+        status: current.status,
+        qr_code: current.qrCode,
+        connected: current.connected,
+      },
+    }
   }
 
-  // Connecting takılı kaldıysa temizle ve taze QR al
-  if (globalForWa.waSocket || globalForWa.waStarting) {
-    console.log("Mevcut oturum temizleniyor, yeniden başlatılıyor...")
-    await teardownSocket()
-    globalForWa.waStarting = false
+  // Takılı socket varsa temizle (taze QR için)
+  if (g.waSocket) {
+    console.log("⚠️ Eski socket temizleniyor...")
+    try {
+      g.waSocket.end(undefined)
+    } catch (error) {
+      console.error("Socket end hatası:", error)
+    }
+    g.waSocket = null
   }
 
-  globalForWa.waStarting = true
-  globalForWa.waQrCode = null
-  globalForWa.waConnectionState = "connecting"
+  g.waStarting = true
+  g.waConnectionState = "connecting"
+  g.waQrCode = null
+
+  await saveSession({ status: "connecting", qr_code: null })
+  console.log('✅ Session durumu "connecting" olarak güncellendi')
 
   try {
-    console.log("startWhatsAppBot: başlıyor...")
-    await upsertSession({ status: "connecting", qr_code: null })
-
+    // Baileys 7: auth zorunlu
     const authDir = path.join(process.cwd(), ".wa-auth")
     const { state, saveCreds } = await useMultiFileAuthState(authDir)
 
@@ -92,136 +123,126 @@ export async function startWhatsAppBot() {
       auth: state,
       browser: ["MyVera WA", "Chrome", "1.0.0"],
       syncFullHistory: false,
+      // printQRInTerminal Baileys 7'de kaldırıldı; QR connection.update içinde gelir
     })
 
-    globalForWa.waSocket = sock
-    console.log("startWhatsAppBot: socket oluşturuldu, QR bekleniyor...")
+    g.waSocket = sock
+    console.log("✅ makeWASocket oluşturuldu")
 
     sock.ev.on("creds.update", saveCreds)
 
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update
+      console.log("🔄 Connection update:", {
+        connection,
+        hasQr: Boolean(qr),
+      })
 
       if (qr) {
-        try {
-          const dataUrl = await toDataURL(qr, {
-            width: 320,
-            margin: 2,
-            errorCorrectionLevel: "M",
-          })
-          globalForWa.waQrCode = dataUrl
-          globalForWa.waConnectionState = "connecting"
-          globalForWa.waStarting = false
-          console.log("QR Kod hazır (length:", dataUrl.length, ")")
-          await upsertSession({
-            qr_code: dataUrl,
-            status: "connecting",
-          })
-        } catch (error) {
-          console.error("QR kod oluşturulamadı:", error)
-        }
+        await persistQr(qr)
       }
 
       if (connection === "close") {
-        globalForWa.waConnectionState = "disconnected"
-        globalForWa.waSocket = null
-        globalForWa.waStarting = false
-        globalForWa.waQrCode = null
+        g.waConnectionState = "disconnected"
+        g.waSocket = null
+        g.waStarting = false
+        g.waQrCode = null
+        console.log("❌ Bağlantı kapandı")
 
         const statusCode = (lastDisconnect?.error as Boom | undefined)?.output
           ?.statusCode
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut
 
-        console.log(
-          "Bağlantı kapandı. statusCode=",
-          statusCode,
-          "reconnect=",
-          shouldReconnect
-        )
-
-        await upsertSession({
-          status: "disconnected",
-          qr_code: null,
-        })
+        await saveSession({ status: "disconnected", qr_code: null })
 
         if (shouldReconnect) {
-          console.log("Bağlantı koptu, yeniden bağlanılıyor...")
-          // Kısa gecikme ile yeniden dene (stack overflow önle)
+          console.log("🔄 Yeniden bağlanılıyor...")
           setTimeout(() => {
             void startWhatsAppBot()
-          }, 1500)
+          }, 2000)
         }
       } else if (connection === "open") {
-        globalForWa.waConnectionState = "connected"
-        globalForWa.waQrCode = null
-        globalForWa.waStarting = false
+        g.waConnectionState = "connected"
+        g.waQrCode = null
+        g.waStarting = false
+        console.log("✅ WhatsApp bağlantısı KURULDU!")
 
-        await upsertSession({
+        await saveSession({
           status: "connected",
           qr_code: null,
           last_active_at: new Date().toISOString(),
         })
-
-        console.log("✅ WhatsApp bağlantısı kuruldu!")
       }
     })
   } catch (error) {
-    console.error("startWhatsAppBot hata:", error)
-    globalForWa.waStarting = false
-    globalForWa.waConnectionState = "disconnected"
-    globalForWa.waSocket = null
-    globalForWa.waQrCode = null
+    console.error("❌ Bot başlatma hatası:", error)
+    g.waStarting = false
+    g.waConnectionState = "disconnected"
+    g.waSocket = null
+    g.waQrCode = null
     throw error
   }
 
-  // QR veya connected gelene kadar bekle (API yanıtında dönebilmek için)
-  const status = await waitForQrOrConnected(12000)
-  globalForWa.waStarting = false
-  console.log("startWhatsAppBot: dönüş status=", status.status, "qr=", !!status.qrCode)
-  return status
+  // UI'nin hemen QR alabilmesi için bekle
+  const status = await waitForQrOrConnected(15000)
+  g.waStarting = false
+
+  console.log("🔵 startWhatsAppBot bitti:", {
+    status: status.status,
+    hasQr: Boolean(status.qrCode),
+  })
+
+  return {
+    success: true,
+    message: status.qrCode
+      ? "QR kod hazır"
+      : status.connected
+        ? "WhatsApp bağlantısı aktif"
+        : "Bot başlatılıyor...",
+    status: {
+      status: status.status,
+      qr_code: status.qrCode,
+      connected: status.connected,
+    },
+  }
 }
 
 export async function stopWhatsAppBot() {
-  if (globalForWa.waSocket) {
+  console.log("🔴 Bot durduruluyor...")
+
+  if (g.waSocket) {
     try {
-      await globalForWa.waSocket.logout()
-    } catch {
-      try {
-        globalForWa.waSocket.end(undefined)
-      } catch (error) {
-        console.error("Socket kapatılamadı:", error)
-      }
+      g.waSocket.end(undefined)
+    } catch (error) {
+      console.error("Socket end hatası:", error)
     }
-    globalForWa.waSocket = null
+    g.waSocket = null
   }
 
-  globalForWa.waConnectionState = "disconnected"
-  globalForWa.waQrCode = null
-  globalForWa.waStarting = false
+  g.waConnectionState = "disconnected"
+  g.waQrCode = null
+  g.waStarting = false
 
-  await upsertSession({
-    status: "disconnected",
-    qr_code: null,
-  })
+  await saveSession({ status: "disconnected", qr_code: null })
+  console.log("✅ Bot durduruldu")
+
+  return { success: true, message: "Bot durduruldu" }
 }
 
 export async function sendWhatsAppMessage(
-  phoneNumber: string,
+  phone: string,
   message: string
 ) {
-  if (
-    !globalForWa.waSocket ||
-    globalForWa.waConnectionState !== "connected"
-  ) {
+  if (!g.waSocket || g.waConnectionState !== "connected") {
     throw new Error("WhatsApp bağlantısı aktif değil")
   }
 
-  const formattedPhone = phoneNumber.replace(/[^0-9]/g, "")
+  const formattedPhone = phone.replace(/[^0-9]/g, "")
   const jid = `${formattedPhone}@s.whatsapp.net`
 
   try {
-    await globalForWa.waSocket.sendMessage(jid, { text: message })
-    console.log(`✓ Mesaj gönderildi: ${phoneNumber}`)
+    await g.waSocket.sendMessage(jid, { text: message })
+    console.log(`✓ Mesaj gönderildi: ${phone}`)
     return true
   } catch (error) {
     console.error("Mesaj gönderilemedi:", error)
@@ -231,8 +252,8 @@ export async function sendWhatsAppMessage(
 
 export function getBotStatus() {
   return {
-    connected: globalForWa.waConnectionState === "connected",
-    qrCode: globalForWa.waQrCode,
-    status: globalForWa.waConnectionState,
+    connected: g.waConnectionState === "connected",
+    qrCode: g.waQrCode,
+    status: g.waConnectionState,
   }
 }

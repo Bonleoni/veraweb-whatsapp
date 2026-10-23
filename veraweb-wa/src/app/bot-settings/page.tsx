@@ -20,13 +20,24 @@ export default function BotSettingsPage() {
     if (pollingRef.current) {
       clearInterval(pollingRef.current)
       pollingRef.current = null
+      console.log("🛑 Polling durduruldu")
     }
   }
 
-  async function fetchStatus() {
+  function startPolling() {
+    if (pollingRef.current) return
+    console.log("🔄 Polling başlatıldı")
+    pollingRef.current = setInterval(() => {
+      void pollStatus()
+    }, 3000)
+  }
+
+  async function pollStatus() {
     try {
       const res = await fetch("/api/bot/status", { cache: "no-store" })
       const data = await res.json()
+      console.log("📊 Polling yanıtı:", data)
+
       if (!data.success) return
 
       const nextStatus = (data.status?.status ||
@@ -44,67 +55,57 @@ export default function BotSettingsPage() {
         }
       }
     } catch (error) {
-      console.error("Durum alınamadı:", error)
+      console.error("❌ Polling hatası:", error)
     }
   }
 
-  function startPolling() {
-    if (pollingRef.current) return
-    pollingRef.current = setInterval(() => {
-      void fetchStatus()
-    }, 3000)
-  }
-
   useEffect(() => {
-    void fetchStatus()
+    void pollStatus()
     startPolling()
     return () => stopPolling()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleStart() {
+  async function handleStartBot() {
+    console.log("🟢 Botu başlat butonuna tıklandı")
     setLoading("start")
     setStatus("connecting")
     setQrCode(null)
     connectedToastShown.current = false
-    toast.message("QR kod oluşturuluyor, sayfayı yenilemeyin...")
-    startPolling()
 
     try {
       const res = await fetch("/api/bot/start", { method: "POST" })
       const data = await res.json()
+      console.log("✅ Bot başlatma yanıtı:", data)
 
-      if (!res.ok || !data.success) {
-        toast.error(data.error ?? "Bot başlatılamadı")
+      if (data.success) {
+        const nextStatus = (data.status?.status ||
+          "connecting") as BotUiStatus
+        const nextQr = (data.status?.qr_code as string | null) || null
+
+        setStatus(nextStatus)
+        setQrCode(nextQr)
+        toast.success(
+          nextQr
+            ? "QR kod hazır — telefonunuzla okutun"
+            : "QR kod oluşturuluyor, lütfen bekleyin..."
+        )
+        startPolling()
+        await pollStatus()
+      } else {
+        toast.error("Bot başlatılamadı: " + (data.error || "bilinmeyen hata"))
         setStatus("disconnected")
-        return
       }
-
-      const nextStatus = (data.status?.status ||
-        "connecting") as BotUiStatus
-      const nextQr = (data.status?.qr_code as string | null) || null
-
-      setStatus(nextStatus)
-      setQrCode(nextQr)
-
-      if (nextQr) {
-        toast.success("QR kod hazır — telefonunuzla okutun")
-      } else if (nextStatus === "connected") {
-        toast.success("WhatsApp bağlantısı kuruldu!")
-        connectedToastShown.current = true
-        stopPolling()
-      }
-
-      await fetchStatus()
-    } catch {
-      toast.error("Bot başlatılamadı")
+    } catch (error) {
+      console.error("❌ Bot başlatma hatası:", error)
+      toast.error("Bir hata oluştu")
       setStatus("disconnected")
     } finally {
       setLoading(null)
     }
   }
 
-  async function handleStop() {
+  async function handleStopBot() {
     setLoading("stop")
     try {
       const res = await fetch("/api/bot/stop", { method: "POST" })
@@ -118,7 +119,8 @@ export default function BotSettingsPage() {
       setQrCode(null)
       connectedToastShown.current = false
       startPolling()
-    } catch {
+    } catch (error) {
+      console.error("❌ Bot durdurma hatası:", error)
       toast.error("Bot durdurulamadı")
     } finally {
       setLoading(null)
@@ -232,7 +234,7 @@ export default function BotSettingsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             className="h-9 rounded-lg gap-1.5 bg-zinc-950 text-white hover:bg-zinc-800"
-            onClick={() => void handleStart()}
+            onClick={() => void handleStartBot()}
             disabled={
               loading !== null ||
               status === "connected" ||
@@ -250,7 +252,7 @@ export default function BotSettingsPage() {
           <Button
             variant="outline"
             className="h-9 rounded-lg gap-1.5 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-            onClick={() => void handleStop()}
+            onClick={() => void handleStopBot()}
             disabled={loading !== null || status === "disconnected"}
           >
             {loading === "stop" ? (

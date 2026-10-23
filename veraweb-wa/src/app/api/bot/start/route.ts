@@ -1,44 +1,25 @@
 import { connection, NextResponse } from "next/server"
-import { getBotStatus, startWhatsAppBot } from "@/lib/whatsapp-bot"
+import { startWhatsAppBot } from "@/lib/whatsapp-bot"
 
 export async function POST() {
+  console.log("🚀 /api/bot/start - POST isteği alındı")
+
   try {
     await connection()
-    console.log("POST /api/bot/start — startWhatsAppBot çağrılıyor")
-    const status = await startWhatsAppBot()
-    console.log(
-      "POST /api/bot/start — bitti:",
-      status.status,
-      "qr?",
-      Boolean(status.qrCode)
-    )
-
-    return NextResponse.json({
-      success: true,
-      message: status.qrCode
-        ? "QR kod hazır"
-        : status.connected
-          ? "WhatsApp bağlantısı aktif"
-          : "Bot başlatılıyor...",
-      status: {
-        status: status.status,
-        qr_code: status.qrCode,
-        connected: status.connected,
-      },
+    const result = await startWhatsAppBot()
+    console.log("✅ Bot başlatma sonucu:", {
+      success: result.success,
+      message: result.message,
+      status: result.status?.status,
+      hasQr: Boolean(result.status?.qr_code),
     })
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Bot başlatılamadı:", error)
-    const fallback = getBotStatus()
+    console.error("❌ Bot başlatma hatası:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Bot başlatılamadı",
-        detail: error instanceof Error ? error.message : String(error),
-        status: {
-          status: fallback.status,
-          qr_code: fallback.qrCode,
-          connected: fallback.connected,
-        },
+        error: error instanceof Error ? error.message : "Bilinmeyen hata",
       },
       { status: 500 }
     )
