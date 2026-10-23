@@ -24,7 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="tr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body
+        className={`${geistSans.className} min-h-full flex flex-col font-sans antialiased`}
+      >
         <AppShell>{children}</AppShell>
       </body>
     </html>
