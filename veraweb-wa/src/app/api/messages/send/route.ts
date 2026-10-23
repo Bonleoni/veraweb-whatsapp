@@ -2,7 +2,7 @@ import { connection, NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { sendWhatsAppMessage } from "@/lib/whatsapp-bot"
 
-// send-queue ile aynı güvenlik kapısı
+// 🛡️ TEST MODU
 const TEST_MODE = true
 const TEST_PHONE_NUMBER = "905426133850"
 
@@ -35,18 +35,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const normalized = normalizePhone(customer.phone)
-    if (TEST_MODE && normalized !== TEST_PHONE_NUMBER) {
+    // 🛡️ TEST MODU KONTROLÜ
+    if (TEST_MODE && normalizePhone(customer.phone) !== TEST_PHONE_NUMBER) {
       console.log(
-        `🛡️ TEST MODU: ${customer.phone} numarasına gönderim engellendi. Sadece ${TEST_PHONE_NUMBER} izinli.`
+        `🛡️ TEST MODE: ${customer.phone} numarasına gönderim engellendi.`
       )
-      return NextResponse.json(
-        {
-          success: false,
-          error: `TEST MODU: Sadece ${TEST_PHONE_NUMBER} numarasına gönderilebilir`,
-        },
-        { status: 403 }
-      )
+
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .insert({
+          customer_id: customerId,
+          direction: "outbound",
+          content,
+          status: "skipped_test",
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        success: true,
+        data,
+        message:
+          "Test modu: Mesaj veritabanına kaydedildi ama WhatsApp'tan gönderilmedi.",
+      })
     }
 
     let sent = false
