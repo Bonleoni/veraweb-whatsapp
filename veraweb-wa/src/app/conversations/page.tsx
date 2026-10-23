@@ -292,12 +292,29 @@ export default function ConversationsPage() {
     void fetchCustomers()
   }, [fetchCustomers])
 
+  // Müşteri listesini her 10 saniyede bir güncelle
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void fetchCustomers({ silent: true })
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [fetchCustomers])
+
   useEffect(() => {
     if (!selectedId) {
       setMessages([])
       return
     }
     void fetchMessages(selectedId)
+  }, [selectedId, fetchMessages])
+
+  // Seçili sohbet mesajlarını her 5 saniyede bir yenile
+  useEffect(() => {
+    if (!selectedId) return
+    const interval = setInterval(() => {
+      void fetchMessages(selectedId, { silent: true })
+    }, 5000)
+    return () => clearInterval(interval)
   }, [selectedId, fetchMessages])
 
   const filtered = useMemo(() => {
