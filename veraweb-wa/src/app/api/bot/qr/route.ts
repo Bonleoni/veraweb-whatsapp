@@ -8,6 +8,7 @@ import { Boom } from "@hapi/boom"
 import { toDataURL } from "qrcode"
 import path from "path"
 import fs from "fs"
+import { attachIncomingMessageListener } from "@/lib/whatsapp-bot"
 
 type QrGlobal = {
   baileysSocket: WASocket | null
@@ -77,6 +78,9 @@ async function ensureSocket() {
     g.baileysQr = null
 
     sock.ev.on("creds.update", saveCreds)
+
+    // 📨 Gelen mesajları dinle → Supabase chat_messages
+    attachIncomingMessageListener(sock)
 
     sock.ev.on("connection.update", async (update) => {
       const { connection: conn, lastDisconnect, qr } = update
