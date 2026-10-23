@@ -268,15 +268,15 @@ export default function ApprovalQueuePage() {
   async function handleCheck() {
     setChecking(true)
     try {
-      const res = await fetch("/api/scenarios/check", { method: "POST" })
+      const res = await fetch("/api/messages/generate", { method: "POST" })
       const data = await res.json()
       if (!res.ok || !data.success) {
-        toast.error(data.error ?? "Senaryo kontrolü başarısız")
+        toast.error(data.error ?? "Mesaj üretilemedi")
         return
       }
 
       const count = typeof data.count === "number" ? data.count : 3
-      toast.success(`${count} mesaj kuyruğa eklendi`)
+      toast.success(data.message ?? `${count} mesaj kuyruğa eklendi`)
 
       const fromDb = await loadMessagesFromSupabase()
 
@@ -321,7 +321,7 @@ export default function ApprovalQueuePage() {
         ])
       }
     } catch {
-      toast.error("Senaryo kontrolü başarısız")
+      toast.error("Mesaj üretilemedi")
     } finally {
       setChecking(false)
     }
