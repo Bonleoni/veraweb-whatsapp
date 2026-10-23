@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,12 @@ interface Message {
   created_at: string
 }
 
+function messagesFingerprint(list: Message[]) {
+  if (list.length === 0) return "0"
+  const last = list[list.length - 1]
+  return `${list.length}:${last.id}:${last.content}`
+}
+
 export default function ConversationsPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] =
@@ -34,35 +40,52 @@ export default function ConversationsPage() {
   const [messageInput, setMessageInput] = useState("")
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const selectedIdRef = useRef<string | null>(null)
+  const messagesFpRef = useRef("0")
 
-  const loadCustomers = async () => {
+  useEffect(() => {
+    selectedIdRef.current = selectedCustomer?.id ?? null
+  }, [selectedCustomer?.id])
+
+  const loadCustomers = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations")
       const data = await res.json()
       if (data.success) {
-        setCustomers(data.data)
+        const list = (data.data ?? []) as Customer[]
+        setCustomers(list)
+        // Seçili müşterinin son mesaj önizlemesini güncel tut
+        setSelectedCustomer((prev) => {
+          if (!prev) return prev
+          const updated = list.find((c) => c.id === prev.id)
+          return updated ? { ...prev, ...updated } : prev
+        })
       }
     } catch (error) {
       console.error("Müşteriler yüklenemedi:", error)
     }
-  }
+  }, [])
 
-  const loadMessages = async (customerId: string) => {
+  const loadMessages = useCallback(async (customerId: string) => {
     try {
       const res = await fetch(
         `/api/messages/history?customerId=${customerId}`
       )
       const data = await res.json()
-      if (data.success) {
-        setMessages(data.data)
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-        }, 100)
-      }
+      if (!data.success) return
+      // Polling sırasında başka sohbete geçildiyse eski cevabı yutma
+      if (selectedIdRef.current !== customerId) return
+
+      const next = (data.data ?? []) as Message[]
+      const fp = messagesFingerprint(next)
+      if (fp === messagesFpRef.current) return
+
+      messagesFpRef.current = fp
+      setMessages(next)
     } catch (error) {
       console.error("Mesajlar yüklenemedi:", error)
     }
-  }
+  }, [])
 
   const handleSend = async () => {
     if (!messageInput.trim() || !selectedCustomer || sending) return
@@ -84,19 +107,24 @@ export default function ConversationsPage() {
       const data = await res.json()
 
       if (data.success) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: data.data?.id || Date.now().toString(),
-            customer_id: selectedCustomer.id,
-            direction: "outbound",
-            content: tempMessage,
-            status: "sent",
-            created_at: new Date().toISOString(),
-          },
-        ])
+        const newMsg: Message = {
+          id: data.data?.id || Date.now().toString(),
+          customer_id: selectedCustomer.id,
+          direction: "outbound",
+          content: tempMessage,
+          status: data.data?.status || "sent",
+          created_at: data.data?.created_at || new Date().toISOString(),
+        }
+        setMessages((prev) => {
+          const next = [...prev, newMsg]
+          messagesFpRef.current = messagesFingerprint(next)
+          return next
+        })
 
-        await loadCustomers()
+        await Promise.all([
+          loadCustomers(),
+          loadMessages(selectedCustomer.id),
+        ])
 
         toast.success(
           typeof data.message === "string" ? data.message : "Mesaj gönderildi"
@@ -122,13 +150,35 @@ export default function ConversationsPage() {
   }
 
   const selectCustomer = (customer: Customer) => {
+    selectedIdRef.current = customer.id
+    messagesFpRef.current = "0"
     setSelectedCustomer(customer)
+    setMessages([])
     void loadMessages(customer.id)
   }
 
+  // İlk yükleme
   useEffect(() => {
     void loadCustomers()
-  }, [])
+  }, [loadCustomers])
+
+  // Seçili sohbet mesajlarını her 3 sn yenile
+  useEffect(() => {
+    if (!selectedCustomer?.id) return
+    void loadMessages(selectedCustomer.id)
+    const interval = setInterval(() => {
+      void loadMessages(selectedCustomer.id)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [selectedCustomer?.id, loadMessages])
+
+  // Müşteri listesini her 8 sn yenile
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadCustomers()
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [loadCustomers])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
