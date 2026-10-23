@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 type FilterStatus = "all" | "sent" | "pending" | "read"
 type ReadStatus = "read" | "delivered" | "unread" | "sent"
@@ -156,7 +157,13 @@ function mapListStatus(
 ): ReadStatus {
   if (unreadCount > 0) return "unread"
   if (status === "read") return "read"
-  if (status === "delivered" || status === "sent") return "delivered"
+  if (
+    status === "delivered" ||
+    status === "sent" ||
+    status === "skipped_test"
+  ) {
+    return "delivered"
+  }
   return "sent"
 }
 
@@ -217,70 +224,81 @@ export default function ConversationsPage() {
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
-  const [sendError, setSendError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const selectedIdRef = useRef<string | null>(null)
 
-  const loadCustomers = useCallback(async () => {
-    setListLoading(true)
-    setListError(null)
+  useEffect(() => {
+    selectedIdRef.current = selectedId
+  }, [selectedId])
+
+  const fetchCustomers = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false
+    if (!silent) {
+      setListLoading(true)
+      setListError(null)
+    }
     try {
       const res = await fetch("/api/conversations")
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Veriler alınamadı")
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Veriler alınamadı")
       }
-      const mapped = ((json.data ?? []) as ApiCustomer[]).map(mapApiCustomer)
+      const mapped = ((data.data ?? []) as ApiCustomer[]).map(mapApiCustomer)
       setCustomers(mapped)
       setSelectedId((prev) => prev ?? mapped[0]?.id ?? null)
     } catch (err) {
-      console.error(err)
-      setListError(
-        err instanceof Error ? err.message : "Müşteri listesi alınamadı"
-      )
-      setCustomers([])
+      console.error("Müşteriler alınamadı:", err)
+      if (!silent) {
+        setListError(
+          err instanceof Error ? err.message : "Müşteri listesi alınamadı"
+        )
+        setCustomers([])
+      }
     } finally {
-      setListLoading(false)
+      if (!silent) setListLoading(false)
     }
   }, [])
 
+  const fetchMessages = useCallback(
+    async (customerId: string, opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false
+      if (!silent) setMessagesLoading(true)
+      try {
+        const res = await fetch(
+          `/api/messages/history?customerId=${encodeURIComponent(customerId)}`
+        )
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Mesaj geçmişi alınamadı")
+        }
+        if (selectedIdRef.current === customerId) {
+          setMessages(((data.data ?? []) as ApiMessage[]).map(mapApiMessage))
+        }
+      } catch (error) {
+        console.error("Mesajlar alınamadı:", error)
+        if (!silent && selectedIdRef.current === customerId) {
+          setMessages([])
+        }
+      } finally {
+        if (!silent && selectedIdRef.current === customerId) {
+          setMessagesLoading(false)
+        }
+      }
+    },
+    []
+  )
+
   useEffect(() => {
-    loadCustomers()
-  }, [loadCustomers])
+    void fetchCustomers()
+  }, [fetchCustomers])
 
   useEffect(() => {
     if (!selectedId) {
       setMessages([])
       return
     }
-
-    let cancelled = false
-    async function loadHistory() {
-      setMessagesLoading(true)
-      setSendError(null)
-      try {
-        const res = await fetch(
-          `/api/messages/history?customerId=${encodeURIComponent(selectedId!)}`
-        )
-        const json = await res.json()
-        if (!res.ok || !json.success) {
-          throw new Error(json.error || "Mesaj geçmişi alınamadı")
-        }
-        if (!cancelled) {
-          setMessages(((json.data ?? []) as ApiMessage[]).map(mapApiMessage))
-        }
-      } catch (err) {
-        console.error(err)
-        if (!cancelled) setMessages([])
-      } finally {
-        if (!cancelled) setMessagesLoading(false)
-      }
-    }
-
-    loadHistory()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedId])
+    void fetchMessages(selectedId)
+  }, [selectedId, fetchMessages])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -329,50 +347,48 @@ export default function ConversationsPage() {
     if (!text || !selected || sending) return
 
     setSending(true)
-    setSendError(null)
     try {
       const res = await fetch("/api/messages/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: selected.id, content: text }),
+        body: JSON.stringify({
+          customerId: selected.id,
+          content: text,
+        }),
       })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Mesaj gönderilemedi")
-      }
 
-      const saved = json.data as ApiMessage
-      const mapped = mapApiMessage(saved)
-      setMessages((prev) => [...prev, mapped])
-      setCustomers((prev) =>
-        prev
-          .map((c) =>
-            c.id === selected.id
-              ? {
-                  ...c,
-                  lastMessage: text,
-                  lastAt: "Az önce",
-                  lastMessageTime: saved.created_at,
-                  status: "sent" as const,
-                }
-              : c
-          )
-          .sort((a, b) => {
-            const aTime = a.lastMessageTime
-              ? new Date(a.lastMessageTime).getTime()
-              : 0
-            const bTime = b.lastMessageTime
-              ? new Date(b.lastMessageTime).getTime()
-              : 0
-            return bTime - aTime
-          })
-      )
-      setDraft("")
-    } catch (err) {
-      console.error(err)
-      setSendError(
-        err instanceof Error ? err.message : "Mesaj gönderilemedi"
-      )
+      const data = await res.json()
+
+      if (data.success && data.data) {
+        const saved = data.data as ApiMessage
+        const mapped = mapApiMessage({
+          ...saved,
+          content: saved.content || text,
+          direction: saved.direction || "outbound",
+          created_at: saved.created_at || new Date().toISOString(),
+          status: saved.status || "sent",
+        })
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === mapped.id)) return prev
+          return [...prev, mapped]
+        })
+        setDraft("")
+
+        await Promise.all([
+          fetchCustomers({ silent: true }),
+          fetchMessages(selected.id, { silent: true }),
+        ])
+
+        toast.success(
+          typeof data.message === "string" ? data.message : "Mesaj gönderildi"
+        )
+      } else {
+        toast.error(data.error || "Mesaj gönderilemedi")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Bir hata oluştu")
     } finally {
       setSending(false)
     }
@@ -460,7 +476,7 @@ export default function ConversationsPage() {
                   variant="outline"
                   size="sm"
                   className="rounded-lg"
-                  onClick={() => void loadCustomers()}
+                  onClick={() => void fetchCustomers()}
                 >
                   Tekrar dene
                 </Button>
@@ -625,9 +641,6 @@ export default function ConversationsPage() {
 
               <Separator />
               <div className="border-t border-zinc-200 bg-white p-4">
-                {sendError && (
-                  <p className="mb-2 text-xs text-red-600">{sendError}</p>
-                )}
                 <div className="flex items-end gap-2">
                   <textarea
                     value={draft}
