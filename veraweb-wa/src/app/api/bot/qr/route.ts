@@ -1,91 +1,122 @@
 import { connection, NextResponse } from "next/server"
 import makeWASocket, {
   useMultiFileAuthState,
+  DisconnectReason,
   type WASocket,
 } from "@whiskeysockets/baileys"
+import { Boom } from "@hapi/boom"
 import { toDataURL } from "qrcode"
 import path from "path"
+import fs from "fs"
 
 type QrGlobal = {
-  qrSocket: WASocket | null
-  qrCodeData: string | null
-  qrConnected: boolean
-  qrInitPromise: Promise<void> | null
+  baileysSocket: WASocket | null
+  baileysQr: string | null
+  baileysState: "connecting" | "connected" | "disconnected"
+  baileysStarting: boolean
 }
 
 const g = globalThis as typeof globalThis & QrGlobal
 
-if (typeof g.qrConnected === "undefined") {
-  g.qrSocket = null
-  g.qrCodeData = null
-  g.qrConnected = false
-  g.qrInitPromise = null
+if (typeof g.baileysState === "undefined") {
+  g.baileysSocket = null
+  g.baileysQr = null
+  g.baileysState = "disconnected"
+  g.baileysStarting = false
+}
+
+function authDir() {
+  return path.join(process.cwd(), "auth_info_baileys")
+}
+
+async function persistQr(qr: string) {
+  console.log("📱 QR Kod ALINDI!")
+  try {
+    g.baileysQr = await toDataURL(qr, {
+      width: 320,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    })
+    g.baileysState = "connecting"
+    console.log("✅ QR DataURL oluşturuldu")
+  } catch (error) {
+    console.error("❌ QR DataURL hatası:", error)
+  }
 }
 
 async function ensureSocket() {
-  if (g.qrSocket || g.qrInitPromise) {
-    if (g.qrInitPromise) await g.qrInitPromise
+  if (g.baileysSocket && g.baileysState !== "disconnected") return
+  if (g.baileysStarting) {
+    // Başka request init ederken bekle
+    const start = Date.now()
+    while (g.baileysStarting && Date.now() - start < 10000) {
+      await new Promise((r) => setTimeout(r, 200))
+    }
     return
   }
 
-  g.qrInitPromise = (async () => {
-    console.log("🔵 Yeni socket oluşturuluyor...")
+  g.baileysStarting = true
+  console.log("🔵 Yeni socket oluşturuluyor (Auth State ile)...")
 
-    const authDir = path.join(process.cwd(), ".wa-auth")
-    const { state, saveCreds } = await useMultiFileAuthState(authDir)
+  try {
+    const dir = authDir()
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
 
-    // Baileys 7: auth zorunlu; QR connection.update içinde gelir
+    const { state, saveCreds } = await useMultiFileAuthState(dir)
+
     const sock = makeWASocket({
       auth: state,
       browser: ["MyVera WA", "Chrome", "1.0.0"],
       syncFullHistory: false,
     })
 
-    g.qrSocket = sock
+    g.baileysSocket = sock
+    g.baileysState = "connecting"
+    g.baileysQr = null
+
     sock.ev.on("creds.update", saveCreds)
 
     sock.ev.on("connection.update", async (update) => {
-      const { connection: conn, qr } = update
-      console.log("🔄 Connection:", conn, "hasQr:", Boolean(qr))
+      const { connection: conn, lastDisconnect, qr } = update
+      console.log("🔄 Connection update:", conn, "hasQr:", Boolean(qr))
 
+      // Baileys 7: QR burada gelir (ayrı 'qr' event yok)
       if (qr) {
-        console.log("📱 QR alındı:", qr.substring(0, 30) + "...")
-        try {
-          g.qrCodeData = await toDataURL(qr, {
-            width: 320,
-            margin: 2,
-            errorCorrectionLevel: "M",
-          })
-          g.qrConnected = false
-          console.log(
-            "✅ QR DataURL:",
-            g.qrCodeData.substring(0, 50) + "..."
-          )
-        } catch (error) {
-          console.error("❌ QR DataURL hatası:", error)
-        }
-      }
-
-      if (conn === "open") {
-        console.log("✅ Bağlandı!")
-        g.qrConnected = true
-        g.qrCodeData = null
+        await persistQr(qr)
       }
 
       if (conn === "close") {
-        console.log("❌ Bağlantı kapandı")
-        g.qrConnected = false
-        g.qrSocket = null
-        g.qrInitPromise = null
+        const statusCode = (lastDisconnect?.error as Boom | undefined)?.output
+          ?.statusCode
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut
+        console.log(
+          "❌ Bağlantı kapandı. Yeniden bağlanmalı mı?",
+          shouldReconnect,
+          "code=",
+          statusCode
+        )
+
+        g.baileysState = "disconnected"
+        g.baileysSocket = null
+        g.baileysQr = null
+        g.baileysStarting = false
+      } else if (conn === "open") {
+        console.log("✅ WhatsApp bağlantısı BAŞARIYLA KURULDU!")
+        g.baileysState = "connected"
+        g.baileysQr = null
+        g.baileysStarting = false
       }
     })
-  })()
-
-  try {
-    await g.qrInitPromise
+  } catch (error) {
+    console.error("❌ Socket init hatası:", error)
+    g.baileysSocket = null
+    g.baileysState = "disconnected"
+    g.baileysQr = null
+    throw error
   } finally {
-    // init bitti; yeniden tetiklenebilsin diye null ama socket ayakta
-    g.qrInitPromise = null
+    g.baileysStarting = false
   }
 }
 
@@ -94,12 +125,12 @@ export async function GET() {
     await connection()
     await ensureSocket()
 
-    // QR event'i biraz gecikebilir
-    if (!g.qrCodeData && !g.qrConnected) {
-      await new Promise((r) => setTimeout(r, 1500))
+    // QR event'i gecikebilir
+    if (!g.baileysQr && g.baileysState !== "connected") {
+      await new Promise((r) => setTimeout(r, 2000))
     }
 
-    if (g.qrConnected) {
+    if (g.baileysState === "connected") {
       return NextResponse.json({
         success: true,
         qrCode: null,
@@ -107,24 +138,23 @@ export async function GET() {
       })
     }
 
-    if (g.qrCodeData) {
-      console.log("📤 QR kod döndürülüyor...")
+    if (g.baileysQr) {
       return NextResponse.json({
         success: true,
-        qrCode: g.qrCodeData,
+        qrCode: g.baileysQr,
         connected: false,
       })
     }
 
-    console.log("⏳ QR kod henüz hazır değil")
     return NextResponse.json({
       success: true,
       qrCode: null,
       connected: false,
-      message: "QR kod oluşturuluyor, 5 saniye sonra tekrar deneyin",
+      message:
+        "QR kod oluşturuluyor, lütfen 5 saniye bekleyip tekrar deneyin...",
     })
   } catch (error) {
-    console.error("❌ Hata:", error)
+    console.error("❌ Bot Hatası:", error)
     return NextResponse.json(
       {
         success: false,
@@ -139,22 +169,34 @@ export async function POST() {
   try {
     await connection()
 
-    if (g.qrSocket) {
+    if (g.baileysSocket) {
       try {
-        g.qrSocket.end(undefined)
+        g.baileysSocket.end(undefined)
       } catch (error) {
         console.error("Socket end:", error)
       }
-      g.qrSocket = null
-      g.qrCodeData = null
-      g.qrConnected = false
-      g.qrInitPromise = null
-      console.log("🔴 Bot sıfırlandı")
+      g.baileysSocket = null
     }
 
+    g.baileysQr = null
+    g.baileysState = "disconnected"
+    g.baileysStarting = false
+
+    const dir = authDir()
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+
+    // Eski klasör kalıntısı
+    const legacy = path.join(process.cwd(), ".wa-auth")
+    if (fs.existsSync(legacy)) {
+      fs.rmSync(legacy, { recursive: true, force: true })
+    }
+
+    console.log("🔄 Bot ve session tamamen sıfırlandı")
     return NextResponse.json({ success: true, message: "Bot sıfırlandı" })
   } catch (error) {
-    console.error("❌ Sıfırlama hatası:", error)
+    console.error("❌ Sıfırlama başarısız:", error)
     return NextResponse.json(
       { success: false, error: "Sıfırlama başarısız" },
       { status: 500 }
