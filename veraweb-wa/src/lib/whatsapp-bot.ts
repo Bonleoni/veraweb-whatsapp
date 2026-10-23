@@ -68,12 +68,17 @@ export async function startWhatsAppBot() {
       const { connection, lastDisconnect, qr } = update
 
       if (qr) {
-        console.log("QR Kod alındı")
         try {
-          globalForWa.waQrCode = await toDataURL(qr)
+          const dataUrl = await toDataURL(qr, {
+            width: 320,
+            margin: 2,
+            errorCorrectionLevel: "M",
+          })
+          globalForWa.waQrCode = dataUrl
           globalForWa.waConnectionState = "connecting"
+          console.log("QR Kod hazır (data URL length:", dataUrl.length, ")")
           await upsertSession({
-            qr_code: globalForWa.waQrCode,
+            qr_code: dataUrl,
             status: "connecting",
           })
         } catch (error) {

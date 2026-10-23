@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server"
+import { connection, NextResponse } from "next/server"
 import { startWhatsAppBot } from "@/lib/whatsapp-bot"
 
 export async function POST() {
   try {
+    await connection()
     await startWhatsAppBot()
     return NextResponse.json({
       success: true,

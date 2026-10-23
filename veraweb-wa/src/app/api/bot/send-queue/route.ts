@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server"
+import { connection, NextResponse } from "next/server"
 import { sendWhatsAppMessage } from "@/lib/whatsapp-bot"
 import { supabase } from "@/lib/supabase"
 
 export async function POST() {
   try {
+    await connection()
     const { data: messages, error } = await supabase
       .from("message_queue")
       .select(
