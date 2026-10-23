@@ -233,7 +233,18 @@ export async function sendWhatsAppMessage(
   phone: string,
   message: string
 ) {
-  if (!g.waSocket || g.waConnectionState !== "connected") {
+  // Bot Ayarları (/api/bot/qr) oturumu ile eski whatsapp-bot oturumunu destekle
+  const qrGlobal = globalThis as typeof globalThis & {
+    baileysSocket?: WASocket | null
+    baileysState?: string
+  }
+
+  const activeSocket =
+    (g.waConnectionState === "connected" && g.waSocket) ||
+    (qrGlobal.baileysState === "connected" && qrGlobal.baileysSocket) ||
+    null
+
+  if (!activeSocket) {
     throw new Error("WhatsApp bağlantısı aktif değil")
   }
 
@@ -241,7 +252,7 @@ export async function sendWhatsAppMessage(
   const jid = `${formattedPhone}@s.whatsapp.net`
 
   try {
-    await g.waSocket.sendMessage(jid, { text: message })
+    await activeSocket.sendMessage(jid, { text: message })
     console.log(`✓ Mesaj gönderildi: ${phone}`)
     return true
   } catch (error) {

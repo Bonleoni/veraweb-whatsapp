@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Power, X, Loader2 } from "lucide-react"
+import { Power, X, Loader2, Send, AlertCircle } from "lucide-react"
 
 export default function BotSettingsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [sending, setSending] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function stopPolling() {
@@ -89,6 +90,24 @@ export default function BotSettingsPage() {
       }
     } catch {
       toast.error("Bot durdurulamadı")
+    }
+  }
+
+  async function handleSendQueue() {
+    setSending(true)
+    try {
+      const res = await fetch("/api/bot/send-queue", { method: "POST" })
+      const data = await res.json()
+
+      if (data.success) {
+        toast.success(`${data.count || 0} mesaj başarıyla gönderildi!`)
+      } else {
+        toast.error(data.error || "Mesajlar gönderilemedi")
+      }
+    } catch {
+      toast.error("Bir hata oluştu")
+    } finally {
+      setSending(false)
     }
   }
 
@@ -191,6 +210,42 @@ export default function BotSettingsPage() {
             Botu Durdur
           </Button>
         </div>
+      </Card>
+
+      <Card className="bg-white border border-zinc-200 rounded-xl shadow-sm ring-0 p-6 mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-medium text-zinc-950">
+              Mesaj Gönderimi
+            </h3>
+            <p className="text-sm text-zinc-500 mt-1">
+              Onaylanmış (yeşil) bekleyen mesajları WhatsApp üzerinden gönder.
+            </p>
+          </div>
+          <Button
+            onClick={() => void handleSendQueue()}
+            disabled={sending || !connected}
+            className="bg-zinc-950 text-white hover:bg-zinc-800 rounded-lg"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Gönderiliyor...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Kuyruktaki Mesajları Gönder
+              </>
+            )}
+          </Button>
+        </div>
+        {!connected && (
+          <p className="text-xs text-red-500 mt-3 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            Bu işlemi yapmak için önce WhatsApp bağlantısını kurmalısınız.
+          </p>
+        )}
       </Card>
     </div>
   )
