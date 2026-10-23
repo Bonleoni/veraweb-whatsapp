@@ -1,279 +1,194 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { toast } from "sonner"
-import { Loader2, Power, PowerOff, Send } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-
-type BotUiStatus = "connected" | "connecting" | "disconnected"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { Power, X, Loader2 } from "lucide-react"
 
 export default function BotSettingsPage() {
-  const [status, setStatus] = useState<BotUiStatus>("disconnected")
   const [qrCode, setQrCode] = useState<string | null>(null)
-  const [loading, setLoading] = useState<"start" | "stop" | "send" | null>(null)
+  const [connected, setConnected] = useState(false)
+  const [loading, setLoading] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const connectedToastShown = useRef(false)
 
   function stopPolling() {
     if (pollingRef.current) {
       clearInterval(pollingRef.current)
       pollingRef.current = null
-      console.log("🛑 Polling durduruldu")
     }
   }
 
-  function startPolling() {
-    if (pollingRef.current) return
-    console.log("🔄 Polling başlatıldı")
+  async function fetchQRCode() {
+    try {
+      const res = await fetch("/api/bot/qr", { cache: "no-store" })
+      const data = await res.json()
+
+      console.log("📱 QR yanıtı:", data)
+
+      if (!data.success) {
+        toast.error(data.error || "QR alınamadı")
+        return
+      }
+
+      if (data.connected) {
+        setConnected(true)
+        setQrCode(null)
+        setLoading(false)
+        stopPolling()
+        toast.success("WhatsApp bağlantısı kuruldu!")
+        return
+      }
+
+      if (data.qrCode) {
+        setQrCode(data.qrCode)
+        setConnected(false)
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error("❌ QR alınamadı:", error)
+    }
+  }
+
+  async function handleStartBot() {
+    setLoading(true)
+    setQrCode(null)
+    setConnected(false)
+
+    toast.info("Bot başlatılıyor...")
+
+    // Önce eski oturumu temizle, taze QR için
+    try {
+      await fetch("/api/bot/qr", { method: "POST" })
+    } catch {
+      // ignore
+    }
+
+    await fetchQRCode()
+
+    stopPolling()
     pollingRef.current = setInterval(() => {
-      void pollStatus()
+      void fetchQRCode()
     }, 3000)
   }
 
-  async function pollStatus() {
+  async function handleStopBot() {
     try {
-      const res = await fetch("/api/bot/status", { cache: "no-store" })
+      const res = await fetch("/api/bot/qr", { method: "POST" })
       const data = await res.json()
-      console.log("📊 Polling yanıtı:", data)
 
-      if (!data.success) return
-
-      const nextStatus = (data.status?.status ||
-        "disconnected") as BotUiStatus
-      const nextQr = (data.status?.qr_code as string | null) || null
-
-      setStatus(nextStatus)
-      setQrCode(nextQr)
-
-      if (nextStatus === "connected") {
+      if (data.success) {
+        setQrCode(null)
+        setConnected(false)
+        setLoading(false)
         stopPolling()
-        if (!connectedToastShown.current) {
-          connectedToastShown.current = true
-          toast.success("WhatsApp bağlantısı kuruldu!")
-        }
+        toast.success("Bot durduruldu")
+      } else {
+        toast.error("Bot durdurulamadı")
       }
-    } catch (error) {
-      console.error("❌ Polling hatası:", error)
+    } catch {
+      toast.error("Bot durdurulamadı")
     }
   }
 
   useEffect(() => {
-    void pollStatus()
-    startPolling()
     return () => stopPolling()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  async function handleStartBot() {
-    console.log("🟢 Botu başlat butonuna tıklandı")
-    setLoading("start")
-    setStatus("connecting")
-    setQrCode(null)
-    connectedToastShown.current = false
-
-    try {
-      const res = await fetch("/api/bot/start", { method: "POST" })
-      const data = await res.json()
-      console.log("✅ Bot başlatma yanıtı:", data)
-
-      if (data.success) {
-        const nextStatus = (data.status?.status ||
-          "connecting") as BotUiStatus
-        const nextQr = (data.status?.qr_code as string | null) || null
-
-        setStatus(nextStatus)
-        setQrCode(nextQr)
-        toast.success(
-          nextQr
-            ? "QR kod hazır — telefonunuzla okutun"
-            : "QR kod oluşturuluyor, lütfen bekleyin..."
-        )
-        startPolling()
-        await pollStatus()
-      } else {
-        toast.error("Bot başlatılamadı: " + (data.error || "bilinmeyen hata"))
-        setStatus("disconnected")
-      }
-    } catch (error) {
-      console.error("❌ Bot başlatma hatası:", error)
-      toast.error("Bir hata oluştu")
-      setStatus("disconnected")
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  async function handleStopBot() {
-    setLoading("stop")
-    try {
-      const res = await fetch("/api/bot/stop", { method: "POST" })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        toast.error(data.error ?? "Bot durdurulamadı")
-        return
-      }
-      toast.success("Bot durduruldu")
-      setStatus("disconnected")
-      setQrCode(null)
-      connectedToastShown.current = false
-      startPolling()
-    } catch (error) {
-      console.error("❌ Bot durdurma hatası:", error)
-      toast.error("Bot durdurulamadı")
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  async function handleSendQueue() {
-    setLoading("send")
-    try {
-      const res = await fetch("/api/bot/send-queue", { method: "POST" })
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        toast.error(data.error ?? "Mesajlar gönderilemedi")
-        return
-      }
-      toast.success(data.message ?? `${data.count ?? 0} mesaj gönderildi`)
-    } catch {
-      toast.error("Mesajlar gönderilemedi")
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  const starting = loading === "start" || (status === "connecting" && !qrCode)
 
   return (
     <div className="font-sans space-y-6 max-w-3xl">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Bot Ayarları
+          WhatsApp Ayarları
         </h1>
-        <p className="text-zinc-500 text-sm">
+        <p className="text-sm text-zinc-500">
           WhatsApp bağlantınızı yönetin
         </p>
       </div>
 
-      <Card className="bg-white border border-zinc-200 rounded-xl shadow-sm ring-0 p-6 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <Card className="bg-white border border-zinc-200 rounded-xl shadow-sm ring-0 p-6">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-sm font-semibold text-zinc-950 tracking-tight">
+            <h2 className="text-base font-medium text-zinc-950">
               Bağlantı Durumu
-            </p>
+            </h2>
             <p className="text-sm text-zinc-500 mt-1">
-              {status === "connected" && "WhatsApp bağlantınız aktif"}
-              {status === "connecting" && "QR kod okutulmayı bekliyor"}
-              {status === "disconnected" && "Botu başlatarak bağlantıyı kurun"}
+              {connected
+                ? "WhatsApp bağlantınız aktif"
+                : "Botu başlatarak bağlantıyı kurun"}
             </p>
           </div>
-
-          {status === "connected" && (
-            <Badge
-              variant="outline"
-              className="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 text-xs font-medium gap-1.5"
-            >
-              <span className="size-1.5 rounded-full bg-emerald-500" />
-              Bağlı
-            </Badge>
-          )}
-
-          {status === "connecting" && (
-            <Badge
-              variant="outline"
-              className="rounded-full border border-amber-200 bg-amber-50 text-amber-700 px-2.5 py-0.5 text-xs font-medium gap-1.5"
-            >
-              <span className="size-1.5 rounded-full bg-amber-500" />
-              QR kod okunuyor...
-            </Badge>
-          )}
-
-          {status === "disconnected" && (
-            <Badge
-              variant="outline"
-              className="rounded-full border border-red-200 bg-red-50 text-red-700 px-2.5 py-0.5 text-xs font-medium gap-1.5"
-            >
-              <span className="size-1.5 rounded-full bg-red-500" />
-              Bağlı değil
-            </Badge>
-          )}
+          <Badge
+            variant="outline"
+            className={
+              connected
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200 rounded-full px-2.5 py-0.5 text-xs font-medium gap-1.5"
+                : "bg-red-50 text-red-700 border-red-200 rounded-full px-2.5 py-0.5 text-xs font-medium gap-1.5"
+            }
+          >
+            <span
+              className={`size-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-red-500"}`}
+            />
+            {connected ? "Bağlı" : "Bağlı değil"}
+          </Badge>
         </div>
 
-        {status === "connecting" && qrCode && (
-          <Card className="p-8 mt-6 flex flex-col items-center bg-white border border-zinc-200 rounded-xl shadow-sm ring-0">
+        {loading && !qrCode && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+            <p className="text-sm text-zinc-500 mt-4">
+              QR kod oluşturuluyor...
+            </p>
+          </div>
+        )}
+
+        {qrCode && (
+          <div className="flex flex-col items-center justify-center py-8 border border-zinc-200 rounded-lg bg-zinc-50/50">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qrCode}
               alt="QR Code"
-              className="w-64 h-64 border border-zinc-200 rounded-lg"
+              className="w-64 h-64 border border-zinc-200 rounded-lg bg-white p-2"
             />
-            <p className="text-sm text-zinc-500 text-center mt-4">
+            <p className="text-sm text-zinc-500 text-center mt-4 max-w-md">
               Telefonunuzla WhatsApp&apos;ı açın → Ayarlar → Bağlı Cihazlar →
               Cihaz Bağla → QR kodu okutun
             </p>
-          </Card>
-        )}
-
-        {status === "connecting" && !qrCode && (
-          <Card className="p-8 mt-6 flex flex-col items-center bg-white border border-zinc-200 rounded-xl shadow-sm ring-0">
-            <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
-            <p className="text-sm text-zinc-500 text-center mt-4">
-              QR kod oluşturuluyor, lütfen bekleyin...
-            </p>
-          </Card>
-        )}
-
-        {status === "connected" && (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm text-emerald-800">
-            WhatsApp bağlantınız aktif
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        {connected && (
+          <div className="py-8 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              WhatsApp bağlantınız aktif
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
           <Button
-            className="h-9 rounded-lg gap-1.5 bg-zinc-950 text-white hover:bg-zinc-800"
             onClick={() => void handleStartBot()}
-            disabled={
-              loading !== null ||
-              status === "connected" ||
-              status === "connecting"
-            }
+            disabled={loading || connected}
+            className="bg-zinc-950 text-white hover:bg-zinc-800 rounded-lg"
           >
-            {starting ? (
-              <Loader2 className="size-4 animate-spin" />
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <Power className="size-4" />
+              <Power className="w-4 h-4 mr-2" />
             )}
-            Botu Başlat
+            {loading ? "Başlatılıyor..." : "Botu Başlat"}
           </Button>
 
           <Button
-            variant="outline"
-            className="h-9 rounded-lg gap-1.5 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
             onClick={() => void handleStopBot()}
-            disabled={loading !== null || status === "disconnected"}
+            variant="outline"
+            disabled={!connected && !loading && !qrCode}
+            className="text-red-600 border-red-200 hover:bg-red-50 rounded-lg"
           >
-            {loading === "stop" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <PowerOff className="size-4" />
-            )}
+            <X className="w-4 h-4 mr-2" />
             Botu Durdur
-          </Button>
-
-          <Button
-            className="h-9 rounded-lg gap-1.5 bg-zinc-950 text-white hover:bg-zinc-800"
-            onClick={() => void handleSendQueue()}
-            disabled={loading !== null || status !== "connected"}
-          >
-            {loading === "send" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Send className="size-4" />
-            )}
-            Kuyruktaki Mesajları Gönder
           </Button>
         </div>
       </Card>
