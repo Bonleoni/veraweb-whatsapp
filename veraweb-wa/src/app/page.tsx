@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import {
   Search,
@@ -189,6 +189,33 @@ export default function ApprovalQueuePage() {
   const [sortAsc, setSortAsc] = useState(true)
   const [page, setPage] = useState(1)
   const [checking, setChecking] = useState(false)
+  const [actionLoading, setActionLoading] = useState<{
+    id: string
+    type: "approve" | "reject"
+  } | null>(null)
+
+  async function loadMessagesFromSupabase() {
+    try {
+      const res = await fetch("/api/messages")
+      const data = await res.json()
+      if (
+        res.ok &&
+        data.success &&
+        Array.isArray(data.messages) &&
+        data.messages.length > 0
+      ) {
+        setRows(data.messages as QueueRow[])
+        return true
+      }
+    } catch (error) {
+      console.error("Mesajlar yüklenemedi:", error)
+    }
+    return false
+  }
+
+  useEffect(() => {
+    void loadMessagesFromSupabase()
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -251,43 +278,48 @@ export default function ApprovalQueuePage() {
       const count = typeof data.count === "number" ? data.count : 3
       toast.success(`${count} mesaj kuyruğa eklendi`)
 
-      const stamped = Date.now()
-      setRows((prev) => [
-        {
-          id: `gen-${stamped}-1`,
-          customer: "Ayşe Yılmaz",
-          phone: "+90 532 111 22 33",
-          scenario: "REMINDER",
-          message: SCENARIOS.REMINDER.template("Ayşe Yılmaz", "14:00"),
-          status: "Bekliyor",
-          created: "Az önce",
-          createdRank: 0,
-          avatarColor: "bg-violet-100 text-violet-700",
-        },
-        {
-          id: `gen-${stamped}-2`,
-          customer: "Mehmet Demir",
-          phone: "+90 533 222 33 44",
-          scenario: "FOLLOW_UP",
-          message: SCENARIOS.FOLLOW_UP.template("Mehmet Demir"),
-          status: "Bekliyor",
-          created: "Az önce",
-          createdRank: 0,
-          avatarColor: "bg-sky-100 text-sky-700",
-        },
-        {
-          id: `gen-${stamped}-3`,
-          customer: "Canan Yıldız",
-          phone: "+90 534 333 44 55",
-          scenario: "ABSENCE",
-          message: SCENARIOS.ABSENCE.template("Canan Yıldız"),
-          status: "Bekliyor",
-          created: "Az önce",
-          createdRank: 0,
-          avatarColor: "bg-rose-100 text-rose-700",
-        },
-        ...prev,
-      ])
+      const fromDb = await loadMessagesFromSupabase()
+
+      // Supabase boşsa (tablo yoksa) local kuyruğa dummy ekle
+      if (!fromDb) {
+        const stamped = Date.now()
+        setRows((prev) => [
+          {
+            id: `gen-${stamped}-1`,
+            customer: "Ayşe Yılmaz",
+            phone: "+90 532 111 22 33",
+            scenario: "REMINDER",
+            message: SCENARIOS.REMINDER.template("Ayşe Yılmaz", "14:00"),
+            status: "Bekliyor",
+            created: "Az önce",
+            createdRank: 0,
+            avatarColor: "bg-violet-100 text-violet-700",
+          },
+          {
+            id: `gen-${stamped}-2`,
+            customer: "Mehmet Demir",
+            phone: "+90 533 222 33 44",
+            scenario: "FOLLOW_UP",
+            message: SCENARIOS.FOLLOW_UP.template("Mehmet Demir"),
+            status: "Bekliyor",
+            created: "Az önce",
+            createdRank: 0,
+            avatarColor: "bg-sky-100 text-sky-700",
+          },
+          {
+            id: `gen-${stamped}-3`,
+            customer: "Canan Yıldız",
+            phone: "+90 534 333 44 55",
+            scenario: "ABSENCE",
+            message: SCENARIOS.ABSENCE.template("Canan Yıldız"),
+            status: "Bekliyor",
+            created: "Az önce",
+            createdRank: 0,
+            avatarColor: "bg-rose-100 text-rose-700",
+          },
+          ...prev,
+        ])
+      }
     } catch {
       toast.error("Senaryo kontrolü başarısız")
     } finally {
@@ -322,10 +354,56 @@ export default function ApprovalQueuePage() {
     })
   }
 
-  function setRowStatus(id: string, status: QueueStatus) {
-    setRows((prev) =>
-      prev.map((row) => (row.id === id ? { ...row, status } : row))
-    )
+  async function handleApprove(messageId: string) {
+    setActionLoading({ id: messageId, type: "approve" })
+    try {
+      const res = await fetch("/api/messages/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        toast.error(data.error ?? "Onaylama başarısız")
+        return
+      }
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === messageId ? { ...row, status: "Onaylandı" } : row
+        )
+      )
+      toast.success("✓ Mesaj onaylandı")
+    } catch {
+      toast.error("Onaylama başarısız")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleReject(messageId: string) {
+    setActionLoading({ id: messageId, type: "reject" })
+    try {
+      const res = await fetch("/api/messages/reject", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        toast.error(data.error ?? "Reddetme başarısız")
+        return
+      }
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === messageId ? { ...row, status: "Reddedildi" } : row
+        )
+      )
+      toast.success("✗ Mesaj reddedildi")
+    } catch {
+      toast.error("Reddetme başarısız")
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const showingFrom = (page - 1) * PAGE_SIZE + 1
@@ -560,21 +638,37 @@ export default function ApprovalQueuePage() {
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
-                        size="icon-sm"
-                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        size="icon"
+                        className="size-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                         aria-label="Onayla"
-                        onClick={() => setRowStatus(row.id, "Onaylandı")}
+                        disabled={
+                          row.status !== "Bekliyor" || actionLoading !== null
+                        }
+                        onClick={() => void handleApprove(row.id)}
                       >
-                        <Check className="size-4" />
+                        {actionLoading?.id === row.id &&
+                        actionLoading.type === "approve" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon-sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        size="icon"
+                        className="size-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                         aria-label="Reddet"
-                        onClick={() => setRowStatus(row.id, "Reddedildi")}
+                        disabled={
+                          row.status !== "Bekliyor" || actionLoading !== null
+                        }
+                        onClick={() => void handleReject(row.id)}
                       >
-                        <X className="size-4" />
+                        {actionLoading?.id === row.id &&
+                        actionLoading.type === "reject" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <X className="size-4" />
+                        )}
                       </Button>
                     </div>
                   </TableCell>
