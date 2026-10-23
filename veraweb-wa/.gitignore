@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# WhatsApp Baileys auth session
+.wa-auth/
+
 # vercel
 .vercel
 

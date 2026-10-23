@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  serverExternalPackages: [
+    "@whiskeysockets/baileys",
+    "sharp",
+    "jimp",
+    "qrcode",
+    "pino",
+  ],
   turbopack: {
     rules: {
       "*.css": {

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 const navItems = [
   { href: "/", label: "Onay Kuyruğu", icon: CheckCircle },
   { href: "/customers", label: "Müşteriler", icon: Users },
-  { href: "/ayarlar", label: "Bot Ayarları", icon: Settings },
+  { href: "/bot-settings", label: "Bot Ayarları", icon: Settings },
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
