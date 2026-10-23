@@ -1,10 +1,17 @@
 import Link from "next/link"
-import { Users, CheckCircle, Settings, ScrollText } from "lucide-react"
+import {
+  Users,
+  CheckCircle,
+  Settings,
+  ScrollText,
+  MessageSquare,
+} from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const navItems = [
   { href: "/", label: "Onay Kuyruğu", icon: CheckCircle },
   { href: "/customers", label: "Müşteriler", icon: Users },
+  { href: "/conversations", label: "Mesajlaşma", icon: MessageSquare },
   { href: "/logs", label: "Loglar", icon: ScrollText },
   { href: "/bot-settings", label: "Bot Ayarları", icon: Settings },
 ]
