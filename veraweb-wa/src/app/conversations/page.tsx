@@ -204,8 +204,8 @@ export default function ConversationsPage() {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="flex h-[calc(100vh-280px)]">
-          <div className="flex w-96 flex-col border-r border-zinc-200 bg-white">
+        <div className="flex h-[calc(100vh-280px)] gap-0">
+          <div className="flex w-96 shrink-0 flex-col border-r border-zinc-200 bg-white">
             <div className="border-b border-zinc-200 p-4">
               <div className="relative">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -258,7 +258,7 @@ export default function ConversationsPage() {
             </ScrollArea>
           </div>
 
-          <div className="flex flex-1 flex-col bg-zinc-50/50">
+          <div className="flex min-w-0 flex-1 flex-col bg-zinc-50/50">
             {selectedCustomer ? (
               <>
                 <div className="flex items-center justify-between border-b border-zinc-200 bg-white p-4">
