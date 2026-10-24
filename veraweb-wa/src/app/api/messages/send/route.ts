@@ -13,7 +13,7 @@ function normalizePhone(phone: string) {
 export async function POST(request: NextRequest) {
   try {
     await connection()
-    const { customerId, content } = await request.json()
+    const { customerId, content, isLead } = await request.json()
 
     if (!customerId || !content) {
       return NextResponse.json(
@@ -22,24 +22,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("phone")
-      .eq("id", customerId)
-      .single()
+    let phone: string | undefined
 
-    if (!customer?.phone) {
+    if (isLead) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("phone")
+        .eq("id", customerId)
+        .single()
+      phone = lead?.phone
+    } else {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("phone")
+        .eq("id", customerId)
+        .single()
+      phone = customer?.phone
+    }
+
+    if (!phone) {
       return NextResponse.json(
-        { success: false, error: "Müşteri telefonu bulunamadı" },
+        {
+          success: false,
+          error: isLead
+            ? "Aday telefonu bulunamadı"
+            : "Müşteri telefonu bulunamadı",
+        },
         { status: 404 }
       )
     }
 
     // 🛡️ TEST MODU KONTROLÜ
-    if (TEST_MODE && normalizePhone(customer.phone) !== TEST_PHONE_NUMBER) {
-      console.log(
-        `🛡️ TEST MODE: ${customer.phone} numarasına gönderim engellendi.`
-      )
+    if (TEST_MODE && normalizePhone(phone) !== TEST_PHONE_NUMBER) {
+      console.log(`🛡️ TEST MODE: ${phone} numarasına gönderim engellendi.`)
+
+      if (isLead) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: Date.now().toString(),
+            direction: "outbound",
+            content,
+            status: "skipped_test",
+            created_at: new Date().toISOString(),
+          },
+          message:
+            "Test modu: Mesaj kaydedildi ama WhatsApp'tan gönderilmedi.",
+        })
+      }
 
       const { data, error } = await supabase
         .from("chat_messages")
@@ -64,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     let sent = false
     try {
-      sent = await sendWhatsAppMessage(customer.phone, content)
+      sent = await sendWhatsAppMessage(phone, content)
     } catch (err) {
       console.error("WhatsApp gönderim hatası:", err)
       return NextResponse.json(
@@ -80,6 +110,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (sent) {
+      if (isLead) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: Date.now().toString(),
+            direction: "outbound",
+            content,
+            status: "sent",
+            created_at: new Date().toISOString(),
+          },
+        })
+      }
+
       const { data, error } = await supabase
         .from("chat_messages")
         .insert({

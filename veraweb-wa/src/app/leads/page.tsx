@@ -8,26 +8,30 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Search, Plus, Star, Phone, Edit, Trash2, MessageSquare } from 'lucide-react';
 
+type LeadStatus = 'new' | 'contacted' | 'interested' | 'converted' | 'rejected';
+
 interface Lead {
   id: string;
-  business_name: string;
-  owner_name?: string;
-  phone?: string;
-  email?: string;
-  city?: string;
-  rating?: number;
-  review_count?: number;
-  status: 'new' | 'contacted' | 'interested' | 'converted' | 'rejected';
-  last_contact_at?: string;
+  business_name?: string | null;
+  owner_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  city?: string | null;
+  rating?: number | null;
+  review_count?: number | null;
+  status?: LeadStatus | null;
+  last_contact_at?: string | null;
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> = {
   new: { label: 'Yeni', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   contacted: { label: 'İletişimde', className: 'bg-amber-50 text-amber-700 border-amber-200' },
   interested: { label: 'İlgili', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   converted: { label: 'Dönüştü', className: 'bg-purple-50 text-purple-700 border-purple-200' },
   rejected: { label: 'Reddedildi', className: 'bg-zinc-50 text-zinc-700 border-zinc-200' },
 };
+
+const DEFAULT_STATUS = STATUS_CONFIG.new;
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -50,9 +54,11 @@ export default function LeadsPage() {
     loadLeads();
   }, []);
 
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch = lead.business_name.toLowerCase().includes(search.toLowerCase()) ||
-      lead.owner_name?.toLowerCase().includes(search.toLowerCase());
+  const filteredLeads = leads.filter((lead) => {
+    const q = search.toLowerCase();
+    const name = lead.business_name?.toLowerCase() ?? '';
+    const owner = lead.owner_name?.toLowerCase() ?? '';
+    const matchesSearch = !q || name.includes(q) || owner.includes(q);
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -112,23 +118,36 @@ export default function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredLeads.map((lead) => (
+              {filteredLeads.map((lead) => {
+                const businessName = lead.business_name?.trim() || 'İsimsiz işletme';
+                const status = (lead.status && STATUS_CONFIG[lead.status])
+                  ? STATUS_CONFIG[lead.status]
+                  : DEFAULT_STATUS;
+                const initials = businessName
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((n) => n[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase() || '?';
+
+                return (
                 <tr key={lead.id} className="border-b border-zinc-100 hover:bg-zinc-50/50">
                   <td className="p-3">
                     <div className="flex items-center gap-3">
                       <Avatar>
                         <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs">
-                          {lead.business_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          {initials}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-sm text-zinc-950">{lead.business_name}</p>
+                        <p className="font-medium text-sm text-zinc-950">{businessName}</p>
                         <div className="flex items-center gap-2 text-xs text-zinc-500">
                           {lead.city && <span>{lead.city}</span>}
-                          {lead.rating && (
+                          {lead.rating != null && (
                             <span className="flex items-center gap-1">
                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                              {lead.rating} ({lead.review_count})
+                              {lead.rating} ({lead.review_count ?? 0})
                             </span>
                           )}
                         </div>
@@ -145,8 +164,8 @@ export default function LeadsPage() {
                     )}
                   </td>
                   <td className="p-3">
-                    <Badge variant="outline" className={STATUS_CONFIG[lead.status].className}>
-                      {STATUS_CONFIG[lead.status].label}
+                    <Badge variant="outline" className={status.className}>
+                      {status.label}
                     </Badge>
                   </td>
                   <td className="p-3 text-sm text-zinc-500">
@@ -166,7 +185,8 @@ export default function LeadsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {filteredLeads.length === 0 && (
