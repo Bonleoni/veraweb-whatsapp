@@ -193,8 +193,9 @@ export default function ConversationsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    // main padding'ini iptal edip viewport yüksekliğini doldur — sayfa scroll olmaz
+    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden p-8">
+      <div className="mb-4 shrink-0">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
           Mesajlaşma
         </h1>
@@ -203,17 +204,18 @@ export default function ConversationsPage() {
         </p>
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="flex h-[calc(100vh-280px)] gap-0">
+      <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          {/* SOL PANEL — sabit genişlik, liste kendi içinde scroll */}
           <div className="flex w-96 shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="border-b border-zinc-200 p-4">
+            <div className="shrink-0 border-b border-zinc-200 p-4">
               <div className="relative">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                 <Input placeholder="Müşteri ara..." className="pl-9" />
               </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               {customers.map((customer) => (
                 <div
                   key={customer.id}
@@ -232,12 +234,12 @@ export default function ConversationsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium text-zinc-950">
                         {customer.name}
                       </p>
                       {customer.lastMessageTime && (
-                        <span className="text-xs text-zinc-400">
+                        <span className="shrink-0 text-xs text-zinc-400">
                           {new Date(
                             customer.lastMessageTime
                           ).toLocaleDateString("tr-TR")}
@@ -258,11 +260,12 @@ export default function ConversationsPage() {
             </ScrollArea>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col bg-zinc-50/50">
+          {/* SAĞ PANEL — header/input sabit, sadece mesajlar scroll */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50/50">
             {selectedCustomer ? (
               <>
-                <div className="flex items-center justify-between border-b border-zinc-200 bg-white p-4">
-                  <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 bg-white p-4">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Avatar>
                       <AvatarFallback className="bg-zinc-100 text-zinc-700">
                         {selectedCustomer.name
@@ -272,8 +275,8 @@ export default function ConversationsPage() {
                           .slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="text-sm font-medium text-zinc-950">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-zinc-950">
                         {selectedCustomer.name}
                       </p>
                       <p className="text-xs text-zinc-500">
@@ -281,12 +284,12 @@ export default function ConversationsPage() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="shrink-0">
                     <User className="h-4 w-4" />
                   </Button>
                 </div>
 
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="min-h-0 flex-1 p-4">
                   <div className="space-y-3">
                     {messages.map((msg) => (
                       <div
@@ -304,7 +307,9 @@ export default function ConversationsPage() {
                               : "rounded-bl-sm border border-zinc-200 bg-white text-zinc-900"
                           }`}
                         >
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-sm whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
                           <p
                             className={`mt-1 text-xs ${
                               msg.direction === "outbound"
@@ -321,7 +326,7 @@ export default function ConversationsPage() {
                   </div>
                 </ScrollArea>
 
-                <div className="border-t border-zinc-200 bg-white p-4">
+                <div className="shrink-0 border-t border-zinc-200 bg-white p-4">
                   <div className="flex gap-2">
                     <Input
                       placeholder="Mesajınızı yazın..."
