@@ -9,6 +9,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Search, User } from "lucide-react"
 import { toast } from "sonner"
 
+interface Business {
+  id: string
+  name: string
+  owner_name?: string | null
+}
+
 interface Customer {
   id: string
   name: string
@@ -32,7 +38,20 @@ function messagesFingerprint(list: Message[]) {
   return `${list.length}:${last.id}:${last.content}`
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
 export default function ConversationsPage() {
+  const [businesses, setBusinesses] = useState<Business[]>([])
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] =
     useState<Customer | null>(null)
@@ -41,24 +60,52 @@ export default function ConversationsPage() {
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const selectedIdRef = useRef<string | null>(null)
+  const selectedBusinessIdRef = useRef<string | null>(null)
   const messagesFpRef = useRef("0")
 
   useEffect(() => {
     selectedIdRef.current = selectedCustomer?.id ?? null
   }, [selectedCustomer?.id])
 
-  const loadCustomers = useCallback(async () => {
+  useEffect(() => {
+    selectedBusinessIdRef.current = selectedBusiness?.id ?? null
+  }, [selectedBusiness?.id])
+
+  const loadBusinesses = useCallback(async () => {
     try {
-      const res = await fetch("/api/conversations")
+      const res = await fetch("/api/businesses")
+      const data = await res.json()
+      if (data.success) {
+        const list = (data.data ?? []) as Business[]
+        setBusinesses(list)
+        setSelectedBusiness((prev) => {
+          if (prev) {
+            const still = list.find((b) => b.id === prev.id)
+            return still ?? list[0] ?? null
+          }
+          return list[0] ?? null
+        })
+      }
+    } catch (error) {
+      console.error("İşletmeler yüklenemedi:", error)
+    }
+  }, [])
+
+  const loadCustomers = useCallback(async (businessId?: string) => {
+    try {
+      const id = businessId ?? selectedBusinessIdRef.current
+      const url = id
+        ? `/api/conversations?businessId=${encodeURIComponent(id)}`
+        : "/api/conversations"
+      const res = await fetch(url)
       const data = await res.json()
       if (data.success) {
         const list = (data.data ?? []) as Customer[]
         setCustomers(list)
-        // Seçili müşterinin son mesaj önizlemesini güncel tut
         setSelectedCustomer((prev) => {
           if (!prev) return prev
           const updated = list.find((c) => c.id === prev.id)
-          return updated ? { ...prev, ...updated } : prev
+          return updated ?? null
         })
       }
     } catch (error) {
@@ -73,7 +120,6 @@ export default function ConversationsPage() {
       )
       const data = await res.json()
       if (!data.success) return
-      // Polling sırasında başka sohbete geçildiyse eski cevabı yutma
       if (selectedIdRef.current !== customerId) return
 
       const next = (data.data ?? []) as Message[]
@@ -122,7 +168,7 @@ export default function ConversationsPage() {
         })
 
         await Promise.all([
-          loadCustomers(),
+          loadCustomers(selectedBusiness?.id),
           loadMessages(selectedCustomer.id),
         ])
 
@@ -149,6 +195,16 @@ export default function ConversationsPage() {
     }
   }
 
+  const selectBusiness = (business: Business) => {
+    if (selectedBusiness?.id === business.id) return
+    setSelectedBusiness(business)
+    selectedIdRef.current = null
+    messagesFpRef.current = "0"
+    setSelectedCustomer(null)
+    setMessages([])
+    setCustomers([])
+  }
+
   const selectCustomer = (customer: Customer) => {
     selectedIdRef.current = customer.id
     messagesFpRef.current = "0"
@@ -157,12 +213,18 @@ export default function ConversationsPage() {
     void loadMessages(customer.id)
   }
 
-  // İlk yükleme
   useEffect(() => {
-    void loadCustomers()
-  }, [loadCustomers])
+    void loadBusinesses()
+  }, [loadBusinesses])
 
-  // Seçili sohbet mesajlarını her 3 sn yenile
+  useEffect(() => {
+    if (!selectedBusiness?.id) {
+      setCustomers([])
+      return
+    }
+    void loadCustomers(selectedBusiness.id)
+  }, [selectedBusiness?.id, loadCustomers])
+
   useEffect(() => {
     if (!selectedCustomer?.id) return
     void loadMessages(selectedCustomer.id)
@@ -172,13 +234,13 @@ export default function ConversationsPage() {
     return () => clearInterval(interval)
   }, [selectedCustomer?.id, loadMessages])
 
-  // Müşteri listesini her 8 sn yenile
   useEffect(() => {
+    if (!selectedBusiness?.id) return
     const interval = setInterval(() => {
-      void loadCustomers()
+      void loadCustomers(selectedBusiness.id)
     }, 8000)
     return () => clearInterval(interval)
-  }, [loadCustomers])
+  }, [selectedBusiness?.id, loadCustomers])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -193,7 +255,6 @@ export default function ConversationsPage() {
   }
 
   return (
-    // main padding'ini iptal edip viewport yüksekliğini doldur — sayfa scroll olmaz
     <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden p-8">
       <div className="mb-4 shrink-0">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
@@ -206,61 +267,105 @@ export default function ConversationsPage() {
 
       <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0">
         <div className="flex min-h-0 flex-1 overflow-hidden">
-          {/* SOL PANEL — sabit genişlik, liste kendi içinde scroll */}
+          {/* SOL PANEL — işletmeler + müşteriler */}
           <div className="flex w-96 shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="shrink-0 border-b border-zinc-200 p-4">
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-                <Input placeholder="Müşteri ara..." className="pl-9" />
+            {/* KATMAN 1: İşletmeler */}
+            <div className="shrink-0 border-b border-zinc-200">
+              <div className="bg-zinc-50/50 p-3">
+                <p className="mb-2 text-xs font-medium tracking-wider text-zinc-500 uppercase">
+                  Pilates İşletmeleri
+                </p>
+                <ScrollArea className="h-32">
+                  {businesses.map((business) => (
+                    <div
+                      key={business.id}
+                      onClick={() => selectBusiness(business)}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md p-2 transition-colors hover:bg-zinc-100 ${
+                        selectedBusiness?.id === business.id
+                          ? "bg-zinc-100"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-xs font-semibold text-white">
+                        {initials(business.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-zinc-950">
+                          {business.name}
+                        </p>
+                        <p className="truncate text-xs text-zinc-500">
+                          {business.owner_name || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {businesses.length === 0 && (
+                    <p className="p-2 text-xs text-zinc-500">
+                      İşletme bulunamadı
+                    </p>
+                  )}
+                </ScrollArea>
               </div>
             </div>
 
-            <ScrollArea className="min-h-0 flex-1">
-              {customers.map((customer) => (
-                <div
-                  key={customer.id}
-                  onClick={() => selectCustomer(customer)}
-                  className={`flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-zinc-50 ${
-                    selectedCustomer?.id === customer.id ? "bg-zinc-50" : ""
-                  }`}
-                >
-                  <Avatar>
-                    <AvatarFallback className="bg-zinc-100 text-zinc-700">
-                      {customer.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-medium text-zinc-950">
-                        {customer.name}
+            {/* KATMAN 2: Müşteriler */}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="shrink-0 border-b border-zinc-200 p-3">
+                <p className="mb-2 text-xs font-medium tracking-wider text-zinc-500 uppercase">
+                  Müşteriler
+                  {selectedBusiness ? ` • ${selectedBusiness.name}` : ""}
+                </p>
+                <div className="relative">
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <Input placeholder="Müşteri ara..." className="pl-9" />
+                </div>
+              </div>
+
+              <ScrollArea className="min-h-0 flex-1">
+                {customers.map((customer) => (
+                  <div
+                    key={customer.id}
+                    onClick={() => selectCustomer(customer)}
+                    className={`flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-zinc-50 ${
+                      selectedCustomer?.id === customer.id ? "bg-zinc-50" : ""
+                    }`}
+                  >
+                    <Avatar>
+                      <AvatarFallback className="bg-zinc-100 text-zinc-700">
+                        {initials(customer.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-medium text-zinc-950">
+                          {customer.name}
+                        </p>
+                        {customer.lastMessageTime && (
+                          <span className="shrink-0 text-xs text-zinc-400">
+                            {new Date(
+                              customer.lastMessageTime
+                            ).toLocaleDateString("tr-TR")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-zinc-500">
+                        {customer.lastMessage || "Henüz mesaj yok"}
                       </p>
-                      {customer.lastMessageTime && (
-                        <span className="shrink-0 text-xs text-zinc-400">
-                          {new Date(
-                            customer.lastMessageTime
-                          ).toLocaleDateString("tr-TR")}
-                        </span>
-                      )}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-zinc-500">
-                      {customer.lastMessage || "Henüz mesaj yok"}
-                    </p>
                   </div>
-                </div>
-              ))}
-              {customers.length === 0 && (
-                <div className="p-8 text-center text-sm text-zinc-500">
-                  Müşteri bulunamadı
-                </div>
-              )}
-            </ScrollArea>
+                ))}
+                {customers.length === 0 && (
+                  <div className="p-8 text-center text-sm text-zinc-500">
+                    {selectedBusiness
+                      ? "Bu işletmede müşteri yok"
+                      : "Önce bir işletme seçin"}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
           </div>
 
-          {/* SAĞ PANEL — header/input sabit, sadece mesajlar scroll */}
+          {/* SAĞ PANEL */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50/50">
             {selectedCustomer ? (
               <>
@@ -268,11 +373,7 @@ export default function ConversationsPage() {
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar>
                       <AvatarFallback className="bg-zinc-100 text-zinc-700">
-                        {selectedCustomer.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)}
+                        {initials(selectedCustomer.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">

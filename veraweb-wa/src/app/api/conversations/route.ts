@@ -15,10 +15,13 @@ type CustomerRow = {
   chat_messages?: ChatMessageRow[] | null
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connection()
-    const { data: customers, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const businessId = searchParams.get("businessId")
+
+    let query = supabase
       .from("customers")
       .select(
         `
@@ -34,6 +37,12 @@ export async function GET() {
       `
       )
       .order("created_at", { foreignTable: "chat_messages", ascending: false })
+
+    if (businessId) {
+      query = query.eq("business_id", businessId)
+    }
+
+    const { data: customers, error } = await query
 
     if (error) throw error
 
