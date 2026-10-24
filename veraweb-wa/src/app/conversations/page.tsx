@@ -59,7 +59,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function ConversationsPage() {
-  const [navOpen, setNavOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
@@ -223,54 +223,48 @@ export default function ConversationsPage() {
   }, [customers, searchQuery]);
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-3.5rem)] overflow-hidden bg-white">
-      {/* SÜTUN 1 — Navigasyon */}
-      {navOpen ? (
-        <div className="flex h-full w-16 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50/50">
-          <div className="flex shrink-0 items-center justify-center border-b border-zinc-200 p-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setNavOpen(false)}
-              aria-label="Navigasyonu kapat"
-            >
-              <PanelLeftClose className="size-4" />
-            </Button>
-          </div>
-
-          <div className="flex flex-1 flex-col items-center gap-1 p-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="İşletmeler"
-              aria-label="İşletmeler"
-            >
-              <Building2 className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Müşteriler"
-              aria-label="Müşteriler"
-            >
-              <User className="size-4" />
-            </Button>
-          </div>
+    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-8">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
+            Mesajlaşma
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Müşterilerinizle WhatsApp mesaj geçmişinizi görüntüleyin
+          </p>
         </div>
-      ) : (
-        <div className="flex h-full w-16 shrink-0 flex-col items-center border-r border-zinc-200 bg-zinc-50/50 p-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setNavOpen(true)}
-            aria-label="Navigasyonu aç"
-          >
-            <PanelLeftOpen className="size-4" />
-          </Button>
-          <div className="mt-2 flex flex-col items-center gap-3">
-            <Building2 className="size-4 text-zinc-400" />
-            <User className="size-4 text-zinc-400" />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="gap-2"
+        >
+          {sidebarOpen ? (
+            <PanelLeftClose className="h-4 w-4" />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" />
+          )}
+          {sidebarOpen ? 'Daralt' : 'Genişlet'}
+        </Button>
+      </div>
+
+      <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
+      {/* SÜTUN 1: Navigasyon (açılıp kapanabilir) */}
+      {sidebarOpen && (
+        <div className="flex w-16 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50/50">
+          <div className="flex justify-center border-b border-zinc-200 p-4">
+            <p className="text-xs font-medium uppercase text-zinc-500">Menü</p>
           </div>
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 p-2">
+              <Button variant="ghost" size="icon" className="mb-2 w-full">
+                <Building2 className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="w-full">
+                <User className="h-5 w-5" />
+              </Button>
+            </div>
+          </ScrollArea>
         </div>
       )}
 
@@ -448,6 +442,7 @@ export default function ConversationsPage() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
