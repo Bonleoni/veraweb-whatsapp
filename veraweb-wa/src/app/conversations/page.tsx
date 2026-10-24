@@ -85,6 +85,39 @@ function leadStatusClass(status?: string | null) {
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
+const MESSAGE_TEMPLATES = [
+  {
+    id: 'intro',
+    label: 'Tanıtım',
+    content:
+      'Merhaba {business_name}! Pilates işletmeleri için WhatsApp üzerinden otomatik ders hatırlatma ve müşteri takibi yapan bir sistem geliştirdik. 2 dakikanızı ayırıp demo gösterebilir miyiz?',
+  },
+  {
+    id: 'follow_up',
+    label: 'Takip',
+    content:
+      'Merhaba {business_name}, daha önce size ulaşmıştık. Sistemimiz hakkında sorularınız var mı? Ücretsiz demo için hazırız.',
+  },
+  {
+    id: 'value_prop',
+    label: 'Değer Önerisi',
+    content:
+      "Merhaba {business_name}, müşterilerinizin %30'u derslerini kaçırıyor. Bizim sistemimizle hatırlatma mesajları göndererek bu oranı %80 azaltabilirsiniz. Detayları konuşalım mı?",
+  },
+  {
+    id: 'demo_invite',
+    label: 'Demo Davet',
+    content:
+      'Merhaba {business_name}, size özel 15 dakikalık bir demo hazırladık. Hangi gün ve saat sizin için uygun olur?',
+  },
+  {
+    id: 'testimonial',
+    label: 'Referans',
+    content:
+      "Merhaba {business_name}, {city}'deki diğer pilates stüdyoları sistemimizi kullanmaya başladı. Siz de katılmak ister misiniz?",
+  },
+];
+
 export default function ConversationsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mode, setMode] = useState<'customers' | 'leads'>('customers');
@@ -224,6 +257,27 @@ export default function ConversationsPage() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const applyTemplate = (template: (typeof MESSAGE_TEMPLATES)[0]) => {
+    let content = template.content;
+
+    if (mode === 'leads' && selectedLead) {
+      content = content.replace(
+        '{business_name}',
+        selectedLead.business_name || 'Değerli İşletme'
+      );
+      content = content.replace('{city}', selectedLead.city || 'şehrinizdeki');
+    } else if (mode === 'customers' && selectedCustomer) {
+      content = content.replace(
+        '{business_name}',
+        selectedCustomer.name || 'Değerli Müşteri'
+      );
+      content = content.replace('{city}', '');
+    }
+
+    setMessageInput(content);
+    toast.info('Şablon uygulandı. Göndermeden önce düzenleyebilirsiniz.');
   };
 
   const selectCustomer = (customer: Customer) => {
@@ -608,6 +662,27 @@ export default function ConversationsPage() {
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
+
+              {mode === 'leads' && selectedLead && (
+                <div className="shrink-0 border-t border-zinc-200 bg-zinc-50/50 px-4 py-2">
+                  <p className="mb-2 text-xs font-medium text-zinc-500">
+                    Hızlı Şablonlar:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {MESSAGE_TEMPLATES.map((template) => (
+                      <Button
+                        key={template.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => applyTemplate(template)}
+                        className="h-7 text-xs"
+                      >
+                        {template.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="shrink-0 border-t border-zinc-200 bg-white p-4">
                 <div className="flex gap-2">
