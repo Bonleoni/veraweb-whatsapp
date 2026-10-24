@@ -191,6 +191,28 @@ export default function ConversationsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Her 5 saniyede bir mesajları yenile (gelen mesajlar için)
+  useEffect(() => {
+    if (!selectedCustomer) return;
+
+    const interval = setInterval(() => {
+      loadMessages(selectedCustomer.id);
+    }, 5000); // 5 saniye
+
+    return () => clearInterval(interval);
+  }, [selectedCustomer]);
+
+  // Her 10 saniyede bir müşteri listesini güncelle
+  useEffect(() => {
+    if (!selectedBusiness) return;
+
+    const interval = setInterval(() => {
+      loadCustomers(selectedBusiness.id);
+    }, 10000); // 10 saniye
+
+    return () => clearInterval(interval);
+  }, [selectedBusiness]);
+
   const filteredCustomers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return customers;
