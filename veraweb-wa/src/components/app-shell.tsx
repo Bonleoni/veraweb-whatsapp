@@ -10,6 +10,7 @@ import {
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Target,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/', label: 'Onay Kuyruğu', icon: CheckCircle },
   { href: '/customers', label: 'Müşteriler', icon: Users },
+  { href: '/leads', label: 'Adaylar', icon: Target },
   { href: '/conversations', label: 'Mesajlaşma', icon: MessageSquare },
   { href: '/logs', label: 'Loglar', icon: ScrollText },
   { href: '/bot-settings', label: 'Bot Ayarları', icon: Settings },
