@@ -12,8 +12,6 @@ import {
   Search,
   User,
   Building2,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   X,
@@ -211,7 +209,6 @@ const MESSAGE_TEMPLATES = [
 ];
 
 export default function ConversationsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mode, setMode] = useState<'customers' | 'leads'>('customers');
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -478,78 +475,45 @@ export default function ConversationsPage() {
 
   return (
     <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-8">
-      <div className="mb-4 flex shrink-0 items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-            Mesajlaşma
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Müşterilerinizle WhatsApp mesaj geçmişinizi görüntüleyin
-          </p>
-          <div className="mt-4 flex gap-2">
-            <Button
-              variant={mode === 'customers' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setMode('customers');
-                setSelectedLead(null);
-                setMessages([]);
-              }}
-              className={mode === 'customers' ? 'bg-zinc-950 text-white' : ''}
-            >
-              <User className="mr-2 h-4 w-4" />
-              Müşteriler
-            </Button>
-            <Button
-              variant={mode === 'leads' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setMode('leads');
-                setSelectedCustomer(null);
-                setMessages([]);
-                loadLeads();
-              }}
-              className={mode === 'leads' ? 'bg-zinc-950 text-white' : ''}
-            >
-              <Building2 className="mr-2 h-4 w-4" />
-              Adaylar
-            </Button>
-          </div>
+      <div className="mb-4 shrink-0">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
+          Mesajlaşma
+        </h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          Müşterilerinizle WhatsApp mesaj geçmişinizi görüntüleyin
+        </p>
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant={mode === 'customers' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setMode('customers');
+              setSelectedLead(null);
+              setMessages([]);
+            }}
+            className={mode === 'customers' ? 'bg-zinc-950 text-white' : ''}
+          >
+            <User className="mr-2 h-4 w-4" />
+            Müşteriler
+          </Button>
+          <Button
+            variant={mode === 'leads' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setMode('leads');
+              setSelectedCustomer(null);
+              setMessages([]);
+              loadLeads();
+            }}
+            className={mode === 'leads' ? 'bg-zinc-950 text-white' : ''}
+          >
+            <Building2 className="mr-2 h-4 w-4" />
+            Adaylar
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="gap-2"
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-4 w-4" />
-          ) : (
-            <PanelLeftOpen className="h-4 w-4" />
-          )}
-          {sidebarOpen ? 'Daralt' : 'Genişlet'}
-        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
-        {sidebarOpen && (
-          <div className="flex w-16 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50/50">
-            <div className="flex justify-center border-b border-zinc-200 p-4">
-              <p className="text-xs font-medium uppercase text-zinc-500">Menü</p>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="space-y-1 p-2">
-                <Button variant="ghost" size="icon" className="mb-2 w-full">
-                  <Building2 className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="w-full">
-                  <User className="h-5 w-5" />
-                </Button>
-              </div>
-            </ScrollArea>
-          </div>
-        )}
-
         {mode === 'customers' ? (
           <>
             <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
