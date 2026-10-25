@@ -32,6 +32,8 @@ import {
   Clock,
   CheckCircle,
   Zap,
+  ExternalLink,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -62,8 +64,43 @@ interface Lead {
   review_count?: number | null;
   status?: string | null;
   instagram?: string | null;
+  instagram_username?: string | null;
+  instagram_followers?: number | null;
+  instagram_post_count?: number | null;
+  instagram_bio?: string | null;
+  instagram_profile_pic_url?: string | null;
+  photo_urls?: string[] | string | null;
   website?: string | null;
+  website_type?: string | null;
   notes?: string | null;
+}
+
+function parsePhotoUrls(value: Lead['photo_urls']): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch {
+      return value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function getInstagramUsername(lead: Lead): string | null {
+  if (lead.instagram_username?.trim()) {
+    return lead.instagram_username.replace(/^@/, '').trim();
+  }
+  if (!lead.instagram) return null;
+  const match = lead.instagram.match(
+    /instagram\.com\/([A-Za-z0-9._]+)/i
+  );
+  return match?.[1] ?? null;
 }
 
 const STATUS_CONFIG: Record<
@@ -1177,37 +1214,152 @@ export default function ConversationsPage() {
               )}
 
               {mode === 'leads' &&
-                (selectedLead?.instagram || selectedLead?.website) && (
+                selectedLead &&
+                (selectedLead.instagram_followers != null ||
+                  selectedLead.instagram_post_count != null ||
+                  selectedLead.instagram_bio ||
+                  selectedLead.instagram_profile_pic_url ||
+                  selectedLead.instagram_username ||
+                  selectedLead.instagram) && (
                   <div className="border-b border-zinc-200 p-4">
-                    <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                      Social Media
+                    <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                      Instagram Detayları
                     </h4>
-                    <div className="space-y-2">
-                      {selectedLead?.instagram && (
-                        <a
-                          href={selectedLead.instagram}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                        >
-                          <Globe className="h-4 w-4" />
-                          Instagram
-                        </a>
+
+                    <div className="mb-3 flex items-center gap-3">
+                      {selectedLead.instagram_profile_pic_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={selectedLead.instagram_profile_pic_url}
+                          alt="Profile"
+                          className="h-12 w-12 rounded-full border-2 border-zinc-200 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
+                          <Camera className="h-6 w-6" />
+                        </div>
                       )}
-                      {selectedLead?.website && (
-                        <a
-                          href={selectedLead.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                        >
-                          <Globe className="h-4 w-4" />
-                          Website
-                        </a>
+                      {getInstagramUsername(selectedLead) && (
+                        <div>
+                          <p className="text-sm font-medium text-zinc-950">
+                            @{getInstagramUsername(selectedLead)}
+                          </p>
+                          <a
+                            href={
+                              selectedLead.instagram ||
+                              `https://instagram.com/${getInstagramUsername(selectedLead)}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Profili Gör
+                          </a>
+                        </div>
                       )}
                     </div>
+
+                    {(selectedLead.instagram_followers != null ||
+                      selectedLead.instagram_post_count != null) && (
+                      <div className="mb-3 grid grid-cols-2 gap-2">
+                        {selectedLead.instagram_followers != null && (
+                          <div className="rounded-lg border border-purple-200 bg-purple-50 p-2">
+                            <p className="text-xs text-zinc-500">Takipçi</p>
+                            <p className="text-sm font-semibold text-zinc-950">
+                              {Number(
+                                selectedLead.instagram_followers
+                              ).toLocaleString('tr-TR')}
+                            </p>
+                          </div>
+                        )}
+                        {selectedLead.instagram_post_count != null && (
+                          <div className="rounded-lg border border-pink-200 bg-pink-50 p-2">
+                            <p className="text-xs text-zinc-500">Gönderi</p>
+                            <p className="text-sm font-semibold text-zinc-950">
+                              {selectedLead.instagram_post_count}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedLead.instagram_bio && (
+                      <div className="rounded-lg bg-zinc-50 p-3">
+                        <p className="mb-1 text-xs text-zinc-500">Biyografi</p>
+                        <p className="text-sm text-zinc-950">
+                          {selectedLead.instagram_bio}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
+
+              {mode === 'leads' &&
+                selectedLead &&
+                parsePhotoUrls(selectedLead.photo_urls).length > 0 && (
+                  <div className="border-b border-zinc-200 p-4">
+                    <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                      Fotoğraflar
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {parsePhotoUrls(selectedLead.photo_urls)
+                        .slice(0, 9)
+                        .map((photo, index) => (
+                          <a
+                            key={`${photo}-${index}`}
+                            href={photo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square overflow-hidden rounded-lg border border-zinc-200 transition-colors hover:border-zinc-300"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo}
+                              alt={`Photo ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          </a>
+                        ))}
+                    </div>
+                    {parsePhotoUrls(selectedLead.photo_urls).length > 9 && (
+                      <p className="mt-2 text-center text-xs text-zinc-500">
+                        +{parsePhotoUrls(selectedLead.photo_urls).length - 9}{' '}
+                        daha
+                      </p>
+                    )}
+                  </div>
+                )}
+
+              {mode === 'leads' && selectedLead?.website && (
+                <div className="border-b border-zinc-200 p-4">
+                  <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                    Website
+                  </h4>
+                  <a
+                    href={
+                      selectedLead.website.startsWith('http')
+                        ? selectedLead.website
+                        : `https://${selectedLead.website}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-colors hover:bg-blue-100"
+                  >
+                    <Globe className="h-5 w-5 shrink-0 text-blue-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-blue-900">
+                        {selectedLead.website.replace(/^https?:\/\//, '')}
+                      </p>
+                      {selectedLead.website_type && (
+                        <p className="text-xs text-blue-600">
+                          {selectedLead.website_type}
+                        </p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-4 w-4 shrink-0 text-blue-600" />
+                  </a>
+                </div>
+              )}
 
               <div className="border-b border-zinc-200 p-4">
                 <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
