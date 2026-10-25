@@ -33,7 +33,7 @@ interface Customer {
 interface Lead {
   id: string;
   business_name?: string | null;
-  owner_name?: string | null;
+  name?: string | null;
   phone?: string | null;
   city?: string | null;
   status?: string | null;
@@ -343,9 +343,9 @@ export default function ConversationsPage() {
     if (!q) return leads;
     return leads.filter((lead) => {
       const name = lead.business_name?.toLowerCase() ?? '';
-      const owner = lead.owner_name?.toLowerCase() ?? '';
+      const contact = lead.name?.toLowerCase() ?? '';
       const phone = lead.phone?.toLowerCase() ?? '';
-      return name.includes(q) || owner.includes(q) || phone.includes(q);
+      return name.includes(q) || contact.includes(q) || phone.includes(q);
     });
   }, [leads, leadSearchQuery]);
 
@@ -561,9 +561,7 @@ export default function ConversationsPage() {
                           {businessName}
                         </p>
                         <p className="truncate text-xs text-zinc-500">
-                          {lead.owner_name ||
-                            lead.phone ||
-                            'İletişim bilgisi yok'}
+                          {lead.name || lead.phone || 'İletişim bilgisi yok'}
                         </p>
                         {lead.city && (
                           <p className="truncate text-xs text-zinc-400">
