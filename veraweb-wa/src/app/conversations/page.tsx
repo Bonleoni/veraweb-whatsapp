@@ -374,23 +374,23 @@ export default function ConversationsPage() {
         variant={mode === 'customers' ? 'default' : 'outline'}
         size="sm"
         onClick={switchToCustomers}
-        className={`flex-1 text-xs ${
+        className={`h-7 flex-1 px-2 text-xs ${
           mode === 'customers' ? 'bg-zinc-950 text-white' : ''
         }`}
       >
-        <User className="mr-1 h-3 w-3" />
-        Müşteriler
+        <User className="h-3 w-3" />
+        <span className="ml-1">Müşteriler</span>
       </Button>
       <Button
         variant={mode === 'leads' ? 'default' : 'outline'}
         size="sm"
         onClick={switchToLeads}
-        className={`flex-1 text-xs ${
+        className={`h-7 flex-1 px-2 text-xs ${
           mode === 'leads' ? 'bg-zinc-950 text-white' : ''
         }`}
       >
-        <Building2 className="mr-1 h-3 w-3" />
-        Adaylar
+        <Building2 className="h-3 w-3" />
+        <span className="ml-1">Adaylar</span>
       </Button>
     </div>
   );
@@ -514,13 +514,13 @@ export default function ConversationsPage() {
   );
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white">
-      <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
+    <div className="-m-4 flex h-[calc(100vh-48px)] flex-col overflow-hidden bg-white">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-white">
         {mode === 'customers' ? (
           <>
-            <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <div className="flex h-full w-56 shrink-0 flex-col border-r border-zinc-200 bg-white">
+              <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                   Pilates İşletmeleri
                 </p>
               </div>
@@ -554,20 +554,20 @@ export default function ConversationsPage() {
               </ScrollArea>
             </div>
 
-            <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-2">
+            <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
+              <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
                 {modeTabs}
-                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                   Müşteriler ({customers.length})
                   {selectedBusiness ? ` · ${selectedBusiness.name}` : ''}
                 </p>
                 <div className="relative">
-                  <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
+                  <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
                   <Input
                     placeholder="Müşteri ara..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className="h-8 pl-8 text-sm"
                   />
                 </div>
               </div>
@@ -609,19 +609,19 @@ export default function ConversationsPage() {
             </div>
           </>
         ) : (
-          <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="shrink-0 border-b border-zinc-200 p-2">
+          <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
+            <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
               {modeTabs}
-              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 Adaylar ({leads.length})
               </p>
               <div className="relative">
-                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
+                <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
                 <Input
                   placeholder="Aday ara..."
                   value={leadSearchQuery}
                   onChange={(e) => setLeadSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="h-8 pl-8 text-sm"
                 />
               </div>
             </div>
@@ -732,7 +732,7 @@ export default function ConversationsPage() {
                   </Button>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
+                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3 py-1.5">
                   <Button
                     variant={conversationFilter === 'open' ? 'default' : 'ghost'}
                     size="sm"
@@ -1019,15 +1019,15 @@ export default function ConversationsPage() {
                     </Button>
                   </div>
 
-                  <div className="p-4">
+                  <div className="p-3">
                     <Textarea
                       placeholder="Mesajınızı yazın..."
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       onKeyDown={handleKeyPress}
                       disabled={sending}
-                      className="min-h-[120px] w-full resize-none"
-                      rows={4}
+                      className="min-h-[100px] w-full resize-none"
+                      rows={3}
                     />
                     <p className="mt-2 text-xs text-zinc-400">
                       Enter ile gönder, Shift+Enter ile yeni satır
@@ -1048,7 +1048,7 @@ export default function ConversationsPage() {
           </div>
 
           {showContactDetails && activeChat && (
-            <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
+            <div className="flex h-full w-72 shrink-0 flex-col overflow-y-auto bg-white">
               <div className="flex items-center justify-between border-b border-zinc-200 p-3">
                 <h3 className="text-sm font-semibold text-zinc-950">
                   Contact Details

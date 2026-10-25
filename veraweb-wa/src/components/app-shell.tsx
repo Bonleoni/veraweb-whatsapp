@@ -33,13 +33,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-zinc-200 bg-white transition-[width] duration-200 ease-linear',
-          sidebarOpen ? 'w-64' : 'w-16'
+          sidebarOpen ? 'w-48' : 'w-16'
         )}
       >
         <div
           className={cn(
-            'flex h-14 items-center border-b border-zinc-200',
-            sidebarOpen ? 'justify-between gap-2 px-4' : 'justify-center px-2'
+            'flex h-12 items-center border-b border-zinc-200',
+            sidebarOpen ? 'justify-between gap-2 px-3' : 'justify-center px-2'
           )}
         >
           {sidebarOpen && (
@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-end gap-3 border-b border-zinc-200 bg-white px-6">
+        <header className="flex h-12 shrink-0 items-center justify-end gap-3 border-b border-zinc-200 bg-white px-4">
           <Avatar size="sm">
             <AvatarFallback className="bg-zinc-100 text-xs font-medium text-zinc-700">
               AD
@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Avatar>
           <span className="text-sm font-medium text-zinc-950">Admin</span>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/50 p-8">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-zinc-50/50 p-4">
           {children}
         </main>
       </div>
