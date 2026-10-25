@@ -16,6 +16,9 @@ import {
   Trash2,
   MessageSquare,
   MapPin,
+  Mail,
+  Globe,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,10 +32,14 @@ interface Lead {
   email?: string;
   address?: string;
   city?: string;
+  district?: string;
   rating?: number;
   review_count?: number;
-  status: 'new' | 'contacted' | 'interested' | 'converted' | 'rejected';
+  status: LeadStatus;
   lead_number?: string;
+  source?: string;
+  instagram?: string;
+  website?: string;
   created_at: string;
 }
 
@@ -47,6 +54,16 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> = 
 const DEFAULT_STATUS = STATUS_CONFIG.new;
 const RATE_LIMIT_SECONDS = 45;
 
+const formatPhone = (phone: string): string => {
+  if (!phone) return '-';
+  if (phone.startsWith('+90')) return phone;
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('90') && cleaned.length === 12) {
+    return `+${cleaned.slice(0, 2)} ${cleaned.slice(2, 5)} ${cleaned.slice(5, 8)} ${cleaned.slice(8, 10)} ${cleaned.slice(10)}`;
+  }
+  return phone;
+};
+
 export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -60,6 +77,8 @@ export default function LeadsPage() {
     sent: 0,
     failed: 0,
   });
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
 
   const loadLeads = async () => {
     try {
@@ -76,6 +95,11 @@ export default function LeadsPage() {
   useEffect(() => {
     loadLeads();
   }, []);
+
+  const handleRowClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowDetailPanel(true);
+  };
 
   const processQueue = async (total: number) => {
     let attempts = 0;
@@ -185,7 +209,12 @@ export default function LeadsPage() {
     const q = search.toLowerCase();
     const business = lead.business_name?.toLowerCase() ?? '';
     const contactName = lead.name?.toLowerCase() ?? '';
-    const matchesSearch = !q || business.includes(q) || contactName.includes(q);
+    const district = lead.district?.toLowerCase() ?? '';
+    const matchesSearch =
+      !q ||
+      business.includes(q) ||
+      contactName.includes(q) ||
+      district.includes(q);
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -193,6 +222,11 @@ export default function LeadsPage() {
   const allFilteredSelected =
     filteredLeads.length > 0 &&
     filteredLeads.every((l) => selectedLeads.includes(l.id));
+
+  const detailStatus =
+    selectedLead?.status && STATUS_CONFIG[selectedLead.status]
+      ? STATUS_CONFIG[selectedLead.status]
+      : DEFAULT_STATUS;
 
   return (
     <div className="p-8">
@@ -340,13 +374,19 @@ export default function LeadsPage() {
                     .slice(0, 2)
                     .toUpperCase() || '?';
                 const hasPhone = Boolean(lead.phone?.trim());
+                const locationLabel =
+                  lead.district || lead.city || null;
 
                 return (
                   <tr
                     key={lead.id}
-                    className="border-b border-zinc-100 hover:bg-zinc-50/50"
+                    className="cursor-pointer border-b border-zinc-100 hover:bg-zinc-50/50"
+                    onClick={() => handleRowClick(lead)}
                   >
-                    <td className="p-3">
+                    <td
+                      className="p-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedLeads.includes(lead.id)}
@@ -374,10 +414,10 @@ export default function LeadsPage() {
                             {businessName}
                           </p>
                           <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-zinc-500">
-                            {lead.city && (
+                            {locationLabel && (
                               <span className="flex min-w-0 items-center gap-1">
                                 <MapPin className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{lead.city}</span>
+                                <span className="truncate">{locationLabel}</span>
                               </span>
                             )}
                             {lead.rating != null && (
@@ -403,7 +443,9 @@ export default function LeadsPage() {
                         {lead.phone && (
                           <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-500">
                             <Phone className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{lead.phone}</span>
+                            <span className="truncate">
+                              {formatPhone(lead.phone)}
+                            </span>
                           </p>
                         )}
                         {!lead.name && !lead.phone && (
@@ -421,7 +463,10 @@ export default function LeadsPage() {
                         ? new Date(lead.created_at).toLocaleDateString('tr-TR')
                         : '-'}
                     </td>
-                    <td className="p-3">
+                    <td
+                      className="p-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -435,13 +480,20 @@ export default function LeadsPage() {
                           }
                           onClick={() => {
                             if (hasPhone) {
-                              router.push('/conversations');
+                              router.push(
+                                `/conversations?leadId=${lead.id}`
+                              );
                             }
                           }}
                         >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRowClick(lead)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
@@ -479,6 +531,191 @@ export default function LeadsPage() {
           </div>
         </div>
       </Card>
+
+      {showDetailPanel && selectedLead && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowDetailPanel(false)}
+          />
+
+          <div className="relative h-full w-[480px] overflow-y-auto bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-200 bg-white p-4">
+              <h2 className="text-lg font-semibold text-zinc-950">
+                İşletme Detayı
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDetailPanel(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-6 p-6">
+              <div>
+                <h3 className="mb-2 text-xl font-semibold text-zinc-950">
+                  {selectedLead.business_name}
+                </h3>
+                <Badge variant="outline" className={detailStatus.className}>
+                  {detailStatus.label}
+                </Badge>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-zinc-500 uppercase">
+                  İletişim
+                </h4>
+
+                {selectedLead.phone && (
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                    <Phone className="h-5 w-5 text-zinc-500" />
+                    <div>
+                      <p className="text-sm font-medium text-zinc-950">
+                        {formatPhone(selectedLead.phone)}
+                      </p>
+                      <p className="text-xs text-zinc-500">Telefon</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLead.email && (
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                    <Mail className="h-5 w-5 text-zinc-500" />
+                    <div>
+                      <p className="text-sm font-medium text-zinc-950">
+                        {selectedLead.email}
+                      </p>
+                      <p className="text-xs text-zinc-500">E-posta</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLead.name && (
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-950">
+                        {selectedLead.name}
+                      </p>
+                      <p className="text-xs text-zinc-500">İlgili kişi</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {(selectedLead.city ||
+                selectedLead.district ||
+                selectedLead.address) && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-zinc-500 uppercase">
+                    Konum
+                  </h4>
+                  <div className="rounded-lg bg-zinc-50 p-3">
+                    <p className="flex items-start gap-2 text-sm text-zinc-950">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                      <span>
+                        {[selectedLead.district, selectedLead.city]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </span>
+                    </p>
+                    {selectedLead.address && (
+                      <p className="mt-1 pl-6 text-xs text-zinc-500">
+                        {selectedLead.address}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(selectedLead.rating != null ||
+                selectedLead.review_count != null) && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-zinc-500 uppercase">
+                    Google Değerlendirmesi
+                  </h4>
+                  <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <Star className="h-6 w-6 fill-amber-400 text-amber-400" />
+                    <div>
+                      <p className="text-lg font-semibold text-zinc-950">
+                        {selectedLead.rating ?? '—'}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        {selectedLead.review_count ?? 0} yorum
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(selectedLead.instagram || selectedLead.website) && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-zinc-500 uppercase">
+                    Sosyal Medya
+                  </h4>
+                  {selectedLead.instagram && (
+                    <a
+                      href={selectedLead.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3 transition-colors hover:bg-zinc-100"
+                    >
+                      <Globe className="h-5 w-5 text-zinc-500" />
+                      <p className="truncate text-sm text-blue-600 hover:underline">
+                        {selectedLead.instagram}
+                      </p>
+                    </a>
+                  )}
+                  {selectedLead.website && (
+                    <a
+                      href={selectedLead.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3 transition-colors hover:bg-zinc-100"
+                    >
+                      <Globe className="h-5 w-5 text-zinc-500" />
+                      <p className="truncate text-sm text-blue-600 hover:underline">
+                        {selectedLead.website}
+                      </p>
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 border-t border-zinc-200 pt-4">
+                {selectedLead.lead_number && (
+                  <p className="text-xs text-zinc-500">
+                    Lead No: {selectedLead.lead_number}
+                  </p>
+                )}
+                {selectedLead.source && (
+                  <p className="text-xs text-zinc-500">
+                    Kaynak: {selectedLead.source}
+                  </p>
+                )}
+                <p className="text-xs text-zinc-500">
+                  Kayıt:{' '}
+                  {new Date(selectedLead.created_at).toLocaleString('tr-TR')}
+                </p>
+              </div>
+
+              <div className="space-y-2 border-t border-zinc-200 pt-4">
+                <Button
+                  className="w-full bg-emerald-500 text-white hover:bg-emerald-600"
+                  disabled={!selectedLead.phone?.trim()}
+                  onClick={() => {
+                    window.location.href = `/conversations?leadId=${selectedLead.id}`;
+                  }}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Mesaj Gönder
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
