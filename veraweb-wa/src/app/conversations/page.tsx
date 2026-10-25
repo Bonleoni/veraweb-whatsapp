@@ -474,17 +474,11 @@ export default function ConversationsPage() {
   );
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-8">
-      <div className="mb-4 shrink-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-          Mesajlaşma
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Müşterilerinizle WhatsApp mesaj geçmişinizi görüntüleyin
-        </p>
-        <div className="mt-4 flex gap-2">
+    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-zinc-200 bg-white">
+        <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-3 py-2">
           <Button
-            variant={mode === 'customers' ? 'default' : 'outline'}
+            variant={mode === 'customers' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => {
               setMode('customers');
@@ -497,7 +491,7 @@ export default function ConversationsPage() {
             Müşteriler
           </Button>
           <Button
-            variant={mode === 'leads' ? 'default' : 'outline'}
+            variant={mode === 'leads' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => {
               setMode('leads');
@@ -511,9 +505,8 @@ export default function ConversationsPage() {
             Adaylar
           </Button>
         </div>
-      </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
         {mode === 'customers' ? (
           <>
             <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
@@ -1231,6 +1224,7 @@ export default function ConversationsPage() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
