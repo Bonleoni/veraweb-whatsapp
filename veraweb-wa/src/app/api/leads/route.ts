@@ -5,13 +5,19 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('leads')
-      .select('*')
+      .select(
+        'id, business_name, name, phone, email, address, city, rating, review_count, status, lead_number, created_at'
+      )
       .order('created_at', { ascending: false });
 
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Adaylar alınamadı' }, { status: 500 });
+    console.error('Adaylar alınamadı:', error);
+    return NextResponse.json(
+      { success: false, error: 'Adaylar alınamadı' },
+      { status: 500 }
+    );
   }
 }
 
@@ -27,6 +33,9 @@ export async function POST(request: Request) {
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Aday eklenemedi' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Aday eklenemedi' },
+      { status: 500 }
+    );
   }
 }

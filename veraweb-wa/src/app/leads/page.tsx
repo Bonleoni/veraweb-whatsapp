@@ -1,27 +1,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Search, Plus, Star, Phone, Edit, Trash2, MessageSquare } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Star,
+  Phone,
+  Edit,
+  Trash2,
+  MessageSquare,
+  MapPin,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type LeadStatus = 'new' | 'contacted' | 'interested' | 'converted' | 'rejected';
 
 interface Lead {
   id: string;
-  business_name?: string | null;
-  owner_name?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  city?: string | null;
-  rating?: number | null;
-  review_count?: number | null;
-  status?: LeadStatus | null;
-  last_contact_at?: string | null;
+  business_name: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  rating?: number;
+  review_count?: number;
+  status: 'new' | 'contacted' | 'interested' | 'converted' | 'rejected';
+  lead_number?: string;
+  created_at: string;
 }
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; className: string }> = {
@@ -36,6 +48,7 @@ const DEFAULT_STATUS = STATUS_CONFIG.new;
 const RATE_LIMIT_SECONDS = 45;
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -103,7 +116,6 @@ export default function LeadsPage() {
           return;
         }
 
-        // Kuyruk boş
         setSending(false);
         await loadLeads();
       } catch (error) {
@@ -171,9 +183,9 @@ export default function LeadsPage() {
 
   const filteredLeads = leads.filter((lead) => {
     const q = search.toLowerCase();
-    const name = lead.business_name?.toLowerCase() ?? '';
-    const owner = lead.owner_name?.toLowerCase() ?? '';
-    const matchesSearch = !q || name.includes(q) || owner.includes(q);
+    const business = lead.business_name?.toLowerCase() ?? '';
+    const contactName = lead.name?.toLowerCase() ?? '';
+    const matchesSearch = !q || business.includes(q) || contactName.includes(q);
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -188,7 +200,7 @@ export default function LeadsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
           Adaylar
         </h1>
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className="mt-1 text-sm text-zinc-500">
           Google Maps'ten toplanan pilates stüdyoları
         </p>
       </div>
@@ -282,10 +294,10 @@ export default function LeadsPage() {
         </div>
 
         <div className="overflow-hidden rounded-lg border border-zinc-200">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr className="border-b border-zinc-200 bg-zinc-50/50">
-                <th className="p-3 text-left">
+                <th className="w-10 p-3 text-left">
                   <input
                     type="checkbox"
                     checked={allFilteredSelected}
@@ -294,19 +306,19 @@ export default function LeadsPage() {
                     aria-label="Tümünü seç"
                   />
                 </th>
-                <th className="p-3 text-left text-xs font-medium text-zinc-500 uppercase">
+                <th className="w-[32%] p-3 text-left text-xs font-medium text-zinc-500 uppercase">
                   İŞLETME
                 </th>
-                <th className="p-3 text-left text-xs font-medium text-zinc-500 uppercase">
+                <th className="w-[20%] p-3 text-left text-xs font-medium text-zinc-500 uppercase">
                   SAHİP
                 </th>
-                <th className="p-3 text-left text-xs font-medium text-zinc-500 uppercase">
+                <th className="w-[12%] p-3 text-left text-xs font-medium text-zinc-500 uppercase">
                   DURUM
                 </th>
-                <th className="p-3 text-left text-xs font-medium text-zinc-500 uppercase">
-                  SON İLETİŞİM
+                <th className="w-[14%] p-3 text-left text-xs font-medium text-zinc-500 uppercase">
+                  KAYIT
                 </th>
-                <th className="p-3 text-left text-xs font-medium text-zinc-500 uppercase">
+                <th className="w-[14%] p-3 text-left text-xs font-medium text-zinc-500 uppercase">
                   İŞLEMLER
                 </th>
               </tr>
@@ -327,6 +339,7 @@ export default function LeadsPage() {
                     .join('')
                     .slice(0, 2)
                     .toUpperCase() || '?';
+                const hasPhone = Boolean(lead.phone?.trim());
 
                 return (
                   <tr
@@ -350,22 +363,30 @@ export default function LeadsPage() {
                       />
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar className="shrink-0">
                           <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-xs text-white">
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="text-sm font-medium text-zinc-950">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-zinc-950">
                             {businessName}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-zinc-500">
-                            {lead.city && <span>{lead.city}</span>}
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-zinc-500">
+                            {lead.city && (
+                              <span className="flex min-w-0 items-center gap-1">
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{lead.city}</span>
+                              </span>
+                            )}
                             {lead.rating != null && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex shrink-0 items-center gap-1">
                                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                {lead.rating} ({lead.review_count ?? 0})
+                                {lead.rating}
+                                {lead.review_count != null
+                                  ? ` (${lead.review_count})`
+                                  : ''}
                               </span>
                             )}
                           </div>
@@ -373,15 +394,22 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     <td className="p-3">
-                      {lead.owner_name && (
-                        <p className="text-sm text-zinc-950">{lead.owner_name}</p>
-                      )}
-                      {lead.phone && (
-                        <p className="flex items-center gap-1 text-xs text-zinc-500">
-                          <Phone className="h-3 w-3" />
-                          {lead.phone}
-                        </p>
-                      )}
+                      <div className="min-w-0">
+                        {lead.name && (
+                          <p className="truncate text-sm text-zinc-950">
+                            {lead.name}
+                          </p>
+                        )}
+                        {lead.phone && (
+                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-500">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{lead.phone}</span>
+                          </p>
+                        )}
+                        {!lead.name && !lead.phone && (
+                          <p className="text-xs text-zinc-400">—</p>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3">
                       <Badge variant="outline" className={status.className}>
@@ -389,15 +417,28 @@ export default function LeadsPage() {
                       </Badge>
                     </td>
                     <td className="p-3 text-sm text-zinc-500">
-                      {lead.last_contact_at
-                        ? new Date(lead.last_contact_at).toLocaleDateString(
-                            'tr-TR'
-                          )
+                      {lead.created_at
+                        ? new Date(lead.created_at).toLocaleDateString('tr-TR')
                         : '-'}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={!hasPhone}
+                          title={
+                            hasPhone
+                              ? 'Mesaj Gönder'
+                              : 'Telefon numarası yok'
+                          }
+                          onClick={() => {
+                            if (hasPhone) {
+                              router.push('/conversations');
+                            }
+                          }}
+                        >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
