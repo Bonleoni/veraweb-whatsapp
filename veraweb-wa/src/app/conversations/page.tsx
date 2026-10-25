@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,14 @@ import {
   Building2,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
+  Phone,
+  Mail,
+  MapPin,
+  Globe,
+  Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,9 +44,40 @@ interface Lead {
   business_name?: string | null;
   name?: string | null;
   phone?: string | null;
+  email?: string | null;
+  address?: string | null;
   city?: string | null;
+  district?: string | null;
+  rating?: number | null;
+  review_count?: number | null;
   status?: string | null;
+  instagram?: string | null;
+  website?: string | null;
+  notes?: string | null;
 }
+
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; className: string }
+> = {
+  new: { label: 'Yeni', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  contacted: {
+    label: 'İletişimde',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  interested: {
+    label: 'İlgili',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  converted: {
+    label: 'Dönüştü',
+    className: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
+  rejected: {
+    label: 'Reddedildi',
+    className: 'bg-zinc-50 text-zinc-700 border-zinc-200',
+  },
+};
 
 interface Message {
   id: string;
@@ -70,18 +110,12 @@ function formatDate(dateStr: string) {
 }
 
 function leadStatusLabel(status?: string | null) {
-  if (status === 'new') return 'Yeni';
-  if (status === 'contacted') return 'İletişimde';
-  if (status === 'interested') return 'İlgili';
-  if (status === 'converted') return 'Dönüştü';
-  if (status === 'rejected') return 'Reddedildi';
+  if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].label;
   return status || 'Yeni';
 }
 
 function leadStatusClass(status?: string | null) {
-  if (status === 'new') return 'bg-blue-50 text-blue-700 border-blue-200';
-  if (status === 'contacted') return 'bg-amber-50 text-amber-700 border-amber-200';
-  if (status === 'interested') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].className;
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
@@ -136,6 +170,7 @@ export default function ConversationsPage() {
   const [leadSearchQuery, setLeadSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showContactDetails, setShowContactDetails] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadBusinesses = async () => {
@@ -588,127 +623,341 @@ export default function ConversationsPage() {
           </div>
         )}
 
-        <div className="flex h-full min-w-0 flex-1 flex-col bg-zinc-50/50">
-          {activeChat ? (
-            <>
-              <div className="flex shrink-0 items-center gap-3 border-b border-zinc-200 bg-white p-4">
-                <Avatar>
-                  <AvatarFallback className="bg-zinc-100 text-zinc-700">
-                    {selectedCustomer
-                      ? initials(selectedCustomer.name)
-                      : initials(
-                          selectedLead?.business_name?.trim() ||
-                            'İsimsiz işletme'
-                        )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  {selectedCustomer ? (
-                    <>
-                      <p className="truncate text-sm font-medium text-zinc-950">
-                        {selectedCustomer.name}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {selectedCustomer.phone}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="truncate text-sm font-medium text-zinc-950">
-                        {selectedLead?.business_name?.trim() ||
-                          'İsimsiz işletme'}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {selectedLead?.phone || 'Telefon yok'}
-                      </p>
-                    </>
+        <div className="flex min-h-0 min-w-0 flex-1 bg-zinc-50/50">
+          <div
+            className={`flex min-w-0 flex-1 flex-col ${
+              showContactDetails && activeChat ? 'border-r border-zinc-200' : ''
+            }`}
+          >
+            {activeChat ? (
+              <>
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback className="bg-zinc-100 text-zinc-700">
+                        {selectedCustomer
+                          ? initials(selectedCustomer.name)
+                          : initials(
+                              selectedLead?.business_name?.trim() ||
+                                'İsimsiz işletme'
+                            )}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      {selectedCustomer ? (
+                        <>
+                          <p className="truncate text-sm font-medium text-zinc-950">
+                            {selectedCustomer.name}
+                          </p>
+                          <p className="text-xs text-zinc-500">
+                            {selectedCustomer.phone}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="truncate text-sm font-medium text-zinc-950">
+                            {selectedLead?.business_name?.trim() ||
+                              'İsimsiz işletme'}
+                          </p>
+                          <p className="text-xs text-zinc-500">
+                            {selectedLead?.phone || 'Telefon yok'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowContactDetails(!showContactDetails)}
+                    className="shrink-0 gap-2"
+                  >
+                    {showContactDetails ? (
+                      <PanelRightClose className="h-4 w-4" />
+                    ) : (
+                      <PanelRightOpen className="h-4 w-4" />
+                    )}
+                    {showContactDetails ? 'Gizle' : 'Detaylar'}
+                  </Button>
+                </div>
+
+                <ScrollArea className="min-h-0 flex-1 p-4">
+                  <div className="flex flex-col gap-3">
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${
+                          msg.direction === 'outbound'
+                            ? 'justify-end'
+                            : 'justify-start'
+                        }`}
+                      >
+                        <div
+                          className={`max-w-md rounded-2xl px-4 py-2 ${
+                            msg.direction === 'outbound'
+                              ? 'rounded-br-sm bg-emerald-500 text-white'
+                              : 'rounded-bl-sm border border-zinc-200 bg-white text-zinc-900'
+                          }`}
+                        >
+                          <p className="text-sm">{msg.content}</p>
+                          <p
+                            className={`mt-1 text-xs ${
+                              msg.direction === 'outbound'
+                                ? 'text-emerald-100'
+                                : 'text-zinc-400'
+                            }`}
+                          >
+                            {formatTime(msg.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                {mode === 'leads' && selectedLead && (
+                  <div className="shrink-0 border-t border-zinc-200 bg-zinc-50/50 px-4 py-2">
+                    <p className="mb-2 text-xs font-medium text-zinc-500">
+                      Hızlı Şablonlar:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {MESSAGE_TEMPLATES.map((template) => (
+                        <Button
+                          key={template.id}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => applyTemplate(template)}
+                          className="h-7 text-xs"
+                        >
+                          {template.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="shrink-0 border-t border-zinc-200 bg-white p-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Mesajınızı yazın..."
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      disabled={sending}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSend}
+                      disabled={!canSend}
+                      className="bg-zinc-950 text-white hover:bg-zinc-800"
+                    >
+                      <Send className="size-4" />
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-400">
+                    Enter ile gönder, Shift+Enter ile yeni satır
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center">
+                <div className="text-center">
+                  <User className="mx-auto mb-3 size-12 text-zinc-300" />
+                  <p className="text-sm text-zinc-500">
+                    Soldan bir müşteri veya aday seçin
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showContactDetails && activeChat && (
+            <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
+              <div className="flex items-center justify-between border-b border-zinc-200 p-4">
+                <h3 className="text-sm font-semibold text-zinc-950">
+                  Contact Details
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowContactDetails(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="border-b border-zinc-200 p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white">
+                      {selectedCustomer
+                        ? initials(selectedCustomer.name)
+                        : initials(
+                            selectedLead?.business_name?.trim() ||
+                              'İsimsiz işletme'
+                          )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-zinc-950">
+                      {mode === 'customers'
+                        ? selectedCustomer?.name
+                        : selectedLead?.business_name}
+                    </p>
+                    <p className="truncate text-xs text-zinc-500">
+                      {mode === 'customers'
+                        ? selectedCustomer?.phone
+                        : selectedLead?.phone}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-zinc-200 p-4">
+                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                  Contact Lists
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    variant="outline"
+                    className="bg-blue-50 text-blue-700 border-blue-200"
+                  >
+                    {mode === 'customers' ? 'Müşteri' : 'Aday'}
+                  </Badge>
+                  {selectedLead?.status && (
+                    <Badge
+                      variant="outline"
+                      className={leadStatusClass(selectedLead.status)}
+                    >
+                      {leadStatusLabel(selectedLead.status)}
+                    </Badge>
                   )}
                 </div>
               </div>
 
-              <ScrollArea className="min-h-0 flex-1 p-4">
-                <div className="flex flex-col gap-3">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${
-                        msg.direction === 'outbound'
-                          ? 'justify-end'
-                          : 'justify-start'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-md rounded-2xl px-4 py-2 ${
-                          msg.direction === 'outbound'
-                            ? 'rounded-br-sm bg-emerald-500 text-white'
-                            : 'rounded-bl-sm border border-zinc-200 bg-white text-zinc-900'
-                        }`}
-                      >
-                        <p className="text-sm">{msg.content}</p>
-                        <p
-                          className={`mt-1 text-xs ${
-                            msg.direction === 'outbound'
-                              ? 'text-emerald-100'
-                              : 'text-zinc-400'
-                          }`}
-                        >
-                          {formatTime(msg.created_at)}
-                        </p>
-                      </div>
+              <div className="border-b border-zinc-200 p-4">
+                <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                  Contact Information
+                </h4>
+                <div className="space-y-3">
+                  {(mode === 'leads'
+                    ? selectedLead?.phone
+                    : selectedCustomer?.phone) && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-zinc-400" />
+                      <span className="text-sm text-zinc-950">
+                        {mode === 'leads'
+                          ? selectedLead?.phone
+                          : selectedCustomer?.phone}
+                      </span>
                     </div>
-                  ))}
-                  <div ref={messagesEndRef} />
+                  )}
+                  {mode === 'leads' && selectedLead?.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-zinc-400" />
+                      <span className="text-sm text-zinc-950">
+                        {selectedLead.email}
+                      </span>
+                    </div>
+                  )}
+                  {mode === 'leads' && selectedLead?.address && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="mt-0.5 h-4 w-4 text-zinc-400" />
+                      <span className="text-sm text-zinc-950">
+                        {selectedLead.address}
+                      </span>
+                    </div>
+                  )}
+                  {mode === 'leads' &&
+                    (selectedLead?.city || selectedLead?.district) && (
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-zinc-400" />
+                        <span className="text-sm text-zinc-950">
+                          {[selectedLead?.district, selectedLead?.city]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </span>
+                      </div>
+                    )}
                 </div>
-              </ScrollArea>
+              </div>
 
-              {mode === 'leads' && selectedLead && (
-                <div className="shrink-0 border-t border-zinc-200 bg-zinc-50/50 px-4 py-2">
-                  <p className="mb-2 text-xs font-medium text-zinc-500">
-                    Hızlı Şablonlar:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {MESSAGE_TEMPLATES.map((template) => (
-                      <Button
-                        key={template.id}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => applyTemplate(template)}
-                        className="h-7 text-xs"
-                      >
-                        {template.label}
-                      </Button>
-                    ))}
+              {mode === 'leads' && selectedLead?.rating != null && (
+                <div className="border-b border-zinc-200 p-4">
+                  <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                    Google Rating
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                    <span className="text-lg font-semibold text-zinc-950">
+                      {selectedLead.rating}
+                    </span>
+                    <span className="text-sm text-zinc-500">
+                      ({selectedLead.review_count ?? 0} yorum)
+                    </span>
                   </div>
                 </div>
               )}
 
-              <div className="shrink-0 border-t border-zinc-200 bg-white p-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Mesajınızı yazın..."
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={sending}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleSend}
-                    disabled={!canSend}
-                    className="bg-zinc-950 text-white hover:bg-zinc-800"
-                  >
-                    <Send className="size-4" />
-                  </Button>
-                </div>
+              {mode === 'leads' &&
+                (selectedLead?.instagram || selectedLead?.website) && (
+                  <div className="border-b border-zinc-200 p-4">
+                    <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                      Social Media
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedLead?.instagram && (
+                        <a
+                          href={selectedLead.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                        >
+                          <Globe className="h-4 w-4" />
+                          Instagram
+                        </a>
+                      )}
+                      {selectedLead?.website && (
+                        <a
+                          href={selectedLead.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                        >
+                          <Globe className="h-4 w-4" />
+                          Website
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              <div className="border-b border-zinc-200 p-4">
+                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                  Notes
+                </h4>
+                <Textarea
+                  key={
+                    selectedLead?.id || selectedCustomer?.id || 'notes'
+                  }
+                  placeholder="Not ekleyin..."
+                  className="min-h-[80px] text-sm"
+                  defaultValue={selectedLead?.notes || ''}
+                />
               </div>
-            </>
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <User className="mx-auto mb-3 size-12 text-zinc-300" />
-                <p className="text-sm text-zinc-500">
-                  Soldan bir müşteri veya aday seçin
-                </p>
+
+              <div className="p-4">
+                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
+                  Automations
+                </h4>
+                <div className="rounded-lg bg-zinc-50 p-3">
+                  <p className="text-sm font-medium text-zinc-950">
+                    AI Chatbot Automation
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">Aktif</p>
+                </div>
               </div>
             </div>
           )}
