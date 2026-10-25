@@ -348,12 +348,52 @@ export default function ConversationsPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  const switchToCustomers = () => {
+    setMode('customers');
+    setSelectedLead(null);
+    setMessages([]);
+  };
+
+  const switchToLeads = () => {
+    setMode('leads');
+    setSelectedCustomer(null);
+    setMessages([]);
+    loadLeads();
+  };
+
+  const modeTabs = (
+    <div className="mb-3 flex gap-2">
+      <Button
+        variant={mode === 'customers' ? 'default' : 'outline'}
+        size="sm"
+        onClick={switchToCustomers}
+        className={`flex-1 text-xs ${
+          mode === 'customers' ? 'bg-zinc-950 text-white' : ''
+        }`}
+      >
+        <User className="mr-1 h-3 w-3" />
+        Müşteriler
+      </Button>
+      <Button
+        variant={mode === 'leads' ? 'default' : 'outline'}
+        size="sm"
+        onClick={switchToLeads}
+        className={`flex-1 text-xs ${
+          mode === 'leads' ? 'bg-zinc-950 text-white' : ''
+        }`}
+      >
+        <Building2 className="mr-1 h-3 w-3" />
+        Adaylar
+      </Button>
+    </div>
+  );
 
   const applyTemplate = (template: (typeof MESSAGE_TEMPLATES)[0]) => {
     let content = template.content;
@@ -475,38 +515,7 @@ export default function ConversationsPage() {
 
   return (
     <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-4">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-zinc-200 bg-white">
-        <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 px-3 py-2">
-          <Button
-            variant={mode === 'customers' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setMode('customers');
-              setSelectedLead(null);
-              setMessages([]);
-            }}
-            className={mode === 'customers' ? 'bg-zinc-950 text-white' : ''}
-          >
-            <User className="mr-2 h-4 w-4" />
-            Müşteriler
-          </Button>
-          <Button
-            variant={mode === 'leads' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setMode('leads');
-              setSelectedCustomer(null);
-              setMessages([]);
-              loadLeads();
-            }}
-            className={mode === 'leads' ? 'bg-zinc-950 text-white' : ''}
-          >
-            <Building2 className="mr-2 h-4 w-4" />
-            Adaylar
-          </Button>
-        </div>
-
-        <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
         {mode === 'customers' ? (
           <>
             <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
@@ -546,10 +555,11 @@ export default function ConversationsPage() {
             </div>
 
             <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 space-y-3 border-b border-zinc-200 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                  Müşteriler
-                  {selectedBusiness ? ` • ${selectedBusiness.name}` : ''}
+              <div className="shrink-0 border-b border-zinc-200 p-3">
+                {modeTabs}
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  Müşteriler ({customers.length})
+                  {selectedBusiness ? ` · ${selectedBusiness.name}` : ''}
                 </p>
                 <div className="relative">
                   <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
@@ -599,9 +609,10 @@ export default function ConversationsPage() {
             </div>
           </>
         ) : (
-          <div className="flex h-full w-[552px] shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="shrink-0 space-y-3 border-b border-zinc-200 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
+            <div className="shrink-0 border-b border-zinc-200 p-3">
+              {modeTabs}
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Adaylar ({leads.length})
               </p>
               <div className="relative">
@@ -1009,13 +1020,14 @@ export default function ConversationsPage() {
                   </div>
 
                   <div className="p-4">
-                    <Input
+                    <Textarea
                       placeholder="Mesajınızı yazın..."
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
+                      onKeyDown={handleKeyPress}
                       disabled={sending}
-                      className="w-full"
+                      className="min-h-[120px] w-full resize-none"
+                      rows={4}
                     />
                     <p className="mt-2 text-xs text-zinc-400">
                       Enter ile gönder, Shift+Enter ile yeni satır
@@ -1224,7 +1236,6 @@ export default function ConversationsPage() {
               </div>
             </div>
           )}
-        </div>
         </div>
       </div>
     </div>
