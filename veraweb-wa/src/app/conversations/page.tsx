@@ -22,6 +22,14 @@ import {
   MapPin,
   Globe,
   Star,
+  FileText,
+  Smile,
+  Paperclip,
+  Mic,
+  Sparkles,
+  Image as ImageIcon,
+  File as FileIcon,
+  Video,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -119,6 +127,29 @@ function leadStatusClass(status?: string | null) {
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
+const COMMON_EMOJIS = [
+  '😊',
+  '👍',
+  '❤️',
+  '😂',
+  '🎉',
+  '🔥',
+  '👏',
+  '💯',
+  '✨',
+  '🙏',
+  '😍',
+  '🥳',
+  '👋',
+  '💪',
+  '🎯',
+  '📱',
+  '✅',
+  '❌',
+  '💬',
+  '📍',
+];
+
 const MESSAGE_TEMPLATES = [
   {
     id: 'intro',
@@ -171,6 +202,8 @@ export default function ConversationsPage() {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showContactDetails, setShowContactDetails] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadBusinesses = async () => {
@@ -329,6 +362,19 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     loadBusinesses();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-popup]')) {
+        setShowEmojiPicker(false);
+        setShowAttachmentMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -737,27 +783,170 @@ export default function ConversationsPage() {
                   </div>
                 )}
 
-                <div className="shrink-0 border-t border-zinc-200 bg-white p-4">
-                  <div className="flex gap-2">
+                <div className="shrink-0 border-t border-zinc-200 bg-white">
+                  <div className="flex items-center gap-1 border-b border-zinc-100 px-4 py-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        toast.info('Not özelliği yakında eklenecek')
+                      }
+                      title="Not Ekle"
+                    >
+                      <FileText className="h-4 w-4 text-zinc-500" />
+                    </Button>
+
+                    <div className="relative" data-popup>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setShowAttachmentMenu(false);
+                          setShowEmojiPicker((open) => !open);
+                        }}
+                        title="Emoji"
+                      >
+                        <Smile className="h-4 w-4 text-zinc-500" />
+                      </Button>
+
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-12 left-0 z-50 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg">
+                          <div className="grid grid-cols-10 gap-1">
+                            {COMMON_EMOJIS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                className="flex h-8 w-8 items-center justify-center rounded text-lg hover:bg-zinc-100"
+                                onClick={() => {
+                                  setMessageInput((prev) => prev + emoji);
+                                  setShowEmojiPicker(false);
+                                }}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        toast.info('GIF özelliği yakında eklenecek')
+                      }
+                      title="GIF"
+                    >
+                      <span className="text-[10px] font-bold text-zinc-500">
+                        GIF
+                      </span>
+                    </Button>
+
+                    <div className="relative" data-popup>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setShowEmojiPicker(false);
+                          setShowAttachmentMenu((open) => !open);
+                        }}
+                        title="Dosya Ekle"
+                      >
+                        <Paperclip className="h-4 w-4 text-zinc-500" />
+                      </Button>
+
+                      {showAttachmentMenu && (
+                        <div className="absolute bottom-12 left-0 z-50 min-w-[150px] rounded-lg border border-zinc-200 bg-white py-2 shadow-lg">
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-zinc-50"
+                            onClick={() => {
+                              toast.info('Fotoğraf yükleme yakında');
+                              setShowAttachmentMenu(false);
+                            }}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                            Fotoğraf
+                          </button>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-zinc-50"
+                            onClick={() => {
+                              toast.info('Belge yükleme yakında');
+                              setShowAttachmentMenu(false);
+                            }}
+                          >
+                            <FileIcon className="h-4 w-4" />
+                            Belge
+                          </button>
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-zinc-50"
+                            onClick={() => {
+                              toast.info('Video yükleme yakında');
+                              setShowAttachmentMenu(false);
+                            }}
+                          >
+                            <Video className="h-4 w-4" />
+                            Video
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        toast.info('Ses kaydı özelliği yakında eklenecek')
+                      }
+                      title="Ses Kaydı"
+                    >
+                      <Mic className="h-4 w-4 text-zinc-500" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        toast.info('AI asistan yakında eklenecek')
+                      }
+                      title="AI Asistan"
+                    >
+                      <Sparkles className="h-4 w-4 text-zinc-500" />
+                    </Button>
+
+                    <div className="flex-1" />
+
+                    <Button
+                      onClick={handleSend}
+                      disabled={!canSend}
+                      className="h-8 bg-emerald-500 px-4 text-white hover:bg-emerald-600"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="p-4">
                     <Input
                       placeholder="Mesajınızı yazın..."
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       onKeyPress={handleKeyPress}
                       disabled={sending}
-                      className="flex-1"
+                      className="w-full"
                     />
-                    <Button
-                      onClick={handleSend}
-                      disabled={!canSend}
-                      className="bg-zinc-950 text-white hover:bg-zinc-800"
-                    >
-                      <Send className="size-4" />
-                    </Button>
+                    <p className="mt-2 text-xs text-zinc-400">
+                      Enter ile gönder, Shift+Enter ile yeni satır
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs text-zinc-400">
-                    Enter ile gönder, Shift+Enter ile yeni satır
-                  </p>
                 </div>
               </>
             ) : (
