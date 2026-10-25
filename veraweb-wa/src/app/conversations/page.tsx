@@ -369,7 +369,7 @@ export default function ConversationsPage() {
   };
 
   const modeTabs = (
-    <div className="mb-3 flex gap-2">
+    <div className="mb-2 flex gap-1">
       <Button
         variant={mode === 'customers' ? 'default' : 'outline'}
         size="sm"
@@ -514,12 +514,12 @@ export default function ConversationsPage() {
   );
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white p-4">
+    <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-white">
       <div className="flex min-h-0 flex-1 overflow-hidden border border-zinc-200 bg-white">
         {mode === 'customers' ? (
           <>
             <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-4">
+              <div className="shrink-0 border-b border-zinc-200 p-2">
                 <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Pilates İşletmeleri
                 </p>
@@ -555,9 +555,9 @@ export default function ConversationsPage() {
             </div>
 
             <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-3">
+              <div className="shrink-0 border-b border-zinc-200 p-2">
                 {modeTabs}
-                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Müşteriler ({customers.length})
                   {selectedBusiness ? ` · ${selectedBusiness.name}` : ''}
                 </p>
@@ -610,9 +610,9 @@ export default function ConversationsPage() {
           </>
         ) : (
           <div className="flex h-full w-80 shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="shrink-0 border-b border-zinc-200 p-3">
+            <div className="shrink-0 border-b border-zinc-200 p-2">
               {modeTabs}
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Adaylar ({leads.length})
               </p>
               <div className="relative">
@@ -682,7 +682,7 @@ export default function ConversationsPage() {
           >
             {activeChat ? (
               <>
-                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white p-4">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white p-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar>
                       <AvatarFallback className="bg-zinc-100 text-zinc-700">
@@ -1049,7 +1049,7 @@ export default function ConversationsPage() {
 
           {showContactDetails && activeChat && (
             <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
-              <div className="flex items-center justify-between border-b border-zinc-200 p-4">
+              <div className="flex items-center justify-between border-b border-zinc-200 p-3">
                 <h3 className="text-sm font-semibold text-zinc-950">
                   Contact Details
                 </h3>
