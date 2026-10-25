@@ -30,6 +30,10 @@ import {
   Image as ImageIcon,
   File as FileIcon,
   Video,
+  Inbox,
+  Clock,
+  CheckCircle,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -127,6 +131,29 @@ function leadStatusClass(status?: string | null) {
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
+const QUICK_REPLIES = [
+  { id: 'yes', label: 'Evet', content: 'Evet, tabii ki!' },
+  { id: 'no', label: 'Hayır', content: 'Hayır, teşekkürler.' },
+  {
+    id: 'demo',
+    label: 'Demo Randevusu',
+    content:
+      'Size özel bir demo hazırlayabiliriz. Hangi gün ve saat sizin için uygun olur?',
+  },
+  {
+    id: 'price',
+    label: 'Fiyat Bilgisi',
+    content:
+      'Fiyatlandırma hakkında detaylı bilgi gönderiyorum. Bir dakika lütfen.',
+  },
+  { id: 'thanks', label: 'Teşekkürler', content: 'Teşekkür ederiz!' },
+  {
+    id: 'callback',
+    label: 'Geri Dönüş',
+    content: 'Sizi en kısa sürede geri arayacağız.',
+  },
+];
+
 const COMMON_EMOJIS = [
   '😊',
   '👍',
@@ -204,6 +231,10 @@ export default function ConversationsPage() {
   const [showContactDetails, setShowContactDetails] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [conversationFilter, setConversationFilter] = useState<
+    'open' | 'snoozed' | 'done'
+  >('open');
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadBusinesses = async () => {
@@ -410,6 +441,9 @@ export default function ConversationsPage() {
   }, [selectedBusiness, mode]);
 
   const filteredCustomers = useMemo(() => {
+    if (conversationFilter === 'snoozed' || conversationFilter === 'done') {
+      return [];
+    }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter(
@@ -417,9 +451,12 @@ export default function ConversationsPage() {
         c.name?.toLowerCase().includes(q) ||
         c.phone?.toLowerCase().includes(q)
     );
-  }, [customers, searchQuery]);
+  }, [customers, searchQuery, conversationFilter]);
 
   const filteredLeads = useMemo(() => {
+    if (conversationFilter === 'snoozed' || conversationFilter === 'done') {
+      return [];
+    }
     const q = leadSearchQuery.trim().toLowerCase();
     if (!q) return leads;
     return leads.filter((lead) => {
@@ -428,7 +465,7 @@ export default function ConversationsPage() {
       const phone = lead.phone?.toLowerCase() ?? '';
       return name.includes(q) || contact.includes(q) || phone.includes(q);
     });
-  }, [leads, leadSearchQuery]);
+  }, [leads, leadSearchQuery, conversationFilter]);
 
   const activeChat = selectedCustomer || selectedLead;
   const canSend = Boolean(
@@ -727,6 +764,62 @@ export default function ConversationsPage() {
                   </Button>
                 </div>
 
+                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 py-2">
+                  <Button
+                    variant={conversationFilter === 'open' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setConversationFilter('open')}
+                    className={
+                      conversationFilter === 'open'
+                        ? 'bg-zinc-950 text-white'
+                        : ''
+                    }
+                  >
+                    <Inbox className="mr-2 h-4 w-4" />
+                    Açık
+                  </Button>
+                  <Button
+                    variant={
+                      conversationFilter === 'snoozed' ? 'default' : 'ghost'
+                    }
+                    size="sm"
+                    onClick={() => setConversationFilter('snoozed')}
+                    className={
+                      conversationFilter === 'snoozed'
+                        ? 'bg-zinc-950 text-white'
+                        : ''
+                    }
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Ertelenen
+                  </Button>
+                  <Button
+                    variant={conversationFilter === 'done' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setConversationFilter('done')}
+                    className={
+                      conversationFilter === 'done'
+                        ? 'bg-zinc-950 text-white'
+                        : ''
+                    }
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Tamamlanan
+                  </Button>
+
+                  <div className="flex-1" />
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowQuickReplies(!showQuickReplies)}
+                    className="gap-2"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Hızlı Yanıtlar
+                  </Button>
+                </div>
+
                 <ScrollArea className="min-h-0 flex-1 p-4">
                   <div className="flex flex-col gap-3">
                     {messages.map((msg) => (
@@ -777,6 +870,30 @@ export default function ConversationsPage() {
                           className="h-7 text-xs"
                         >
                           {template.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {showQuickReplies && (
+                  <div className="shrink-0 border-t border-zinc-100 bg-zinc-50/50 px-4 py-2">
+                    <p className="mb-2 text-xs font-medium text-zinc-500">
+                      Hızlı Yanıtlar:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {QUICK_REPLIES.map((reply) => (
+                        <Button
+                          key={reply.id}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMessageInput(reply.content);
+                            toast.info(`"${reply.label}" şablonu uygulandı`);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          {reply.label}
                         </Button>
                       ))}
                     </div>
