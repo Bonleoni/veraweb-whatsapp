@@ -615,8 +615,10 @@ export default function ConversationsPage() {
                       key={customer.id}
                       type="button"
                       onClick={() => selectCustomer(customer)}
-                      className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-zinc-50 ${
-                        selectedCustomer?.id === customer.id ? 'bg-zinc-50' : ''
+                      className={`flex w-full items-center gap-3 border-l-4 p-4 text-left transition-all ${
+                        selectedCustomer?.id === customer.id
+                          ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                          : 'border-transparent hover:bg-zinc-50'
                       }`}
                     >
                       <Avatar>
@@ -672,8 +674,10 @@ export default function ConversationsPage() {
                       key={lead.id}
                       type="button"
                       onClick={() => selectLead(lead)}
-                      className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-zinc-50 ${
-                        selectedLead?.id === lead.id ? 'bg-zinc-50' : ''
+                      className={`flex w-full items-center gap-3 border-l-4 p-4 text-left transition-all ${
+                        selectedLead?.id === lead.id
+                          ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                          : 'border-transparent hover:bg-zinc-50'
                       }`}
                     >
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-sm font-semibold text-white">
@@ -719,46 +723,12 @@ export default function ConversationsPage() {
           >
             {activeChat ? (
               <>
-                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 bg-white p-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback className="bg-zinc-100 text-zinc-700">
-                        {selectedCustomer
-                          ? initials(selectedCustomer.name)
-                          : initials(
-                              selectedLead?.business_name?.trim() ||
-                                'İsimsiz işletme'
-                            )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      {selectedCustomer ? (
-                        <>
-                          <p className="truncate text-sm font-medium text-zinc-950">
-                            {selectedCustomer.name}
-                          </p>
-                          <p className="text-xs text-zinc-500">
-                            {selectedCustomer.phone}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="truncate text-sm font-medium text-zinc-950">
-                            {selectedLead?.business_name?.trim() ||
-                              'İsimsiz işletme'}
-                          </p>
-                          <p className="text-xs text-zinc-500">
-                            {selectedLead?.phone || 'Telefon yok'}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                <div className="flex shrink-0 items-center justify-end border-b border-zinc-200 bg-white p-3">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowContactDetails(!showContactDetails)}
-                    className="shrink-0 gap-2"
+                    className="gap-2 text-xs"
                   >
                     {showContactDetails ? (
                       <PanelRightClose className="h-4 w-4" />
@@ -1101,33 +1071,6 @@ export default function ConversationsPage() {
               </div>
 
               <div className="border-b border-zinc-200 p-4">
-                <div className="mb-3 flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white">
-                      {selectedCustomer
-                        ? initials(selectedCustomer.name)
-                        : initials(
-                            selectedLead?.business_name?.trim() ||
-                              'İsimsiz işletme'
-                          )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-950">
-                      {mode === 'customers'
-                        ? selectedCustomer?.name
-                        : selectedLead?.business_name}
-                    </p>
-                    <p className="truncate text-xs text-zinc-500">
-                      {mode === 'customers'
-                        ? selectedCustomer?.phone
-                        : selectedLead?.phone}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-b border-zinc-200 p-4">
                 <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
                   Contact Lists
                 </h4>
@@ -1154,6 +1097,12 @@ export default function ConversationsPage() {
                   Contact Information
                 </h4>
                 <div className="space-y-3">
+                  <p className="text-sm font-medium text-zinc-950">
+                    {mode === 'customers'
+                      ? selectedCustomer?.name
+                      : selectedLead?.business_name?.trim() ||
+                        'İsimsiz işletme'}
+                  </p>
                   {(mode === 'leads'
                     ? selectedLead?.phone
                     : selectedCustomer?.phone) && (
