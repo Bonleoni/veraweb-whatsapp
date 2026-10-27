@@ -47,6 +47,7 @@ interface Customer {
   id: string;
   name: string;
   phone: string;
+  status?: string | null;
   lastMessage?: string;
   lastMessageTime?: string | null;
 }
@@ -159,11 +160,24 @@ function formatDate(dateStr: string) {
 
 function leadStatusLabel(status?: string | null) {
   if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].label;
-  return status || 'Yeni';
+  return status || '';
 }
 
 function leadStatusClass(status?: string | null) {
   if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].className;
+  return 'bg-zinc-50 text-zinc-700 border-zinc-200';
+}
+
+function customerStatusLabel(status?: string | null) {
+  if (status === 'new') return 'Yeni';
+  if (status === 'active') return 'Aktif';
+  return status || '';
+}
+
+function customerStatusClass(status?: string | null) {
+  if (status === 'new') return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (status === 'active')
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
@@ -723,6 +737,14 @@ export default function ConversationsPage() {
                           {customer.lastMessage || 'Henüz mesaj yok'}
                         </p>
                       </div>
+                      {customer.status && (
+                        <Badge
+                          variant="outline"
+                          className={`h-5 shrink-0 px-1.5 text-[10px] ${customerStatusClass(customer.status)}`}
+                        >
+                          {customerStatusLabel(customer.status)}
+                        </Badge>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -777,12 +799,14 @@ export default function ConversationsPage() {
                           </p>
                         )}
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={`shrink-0 text-xs ${leadStatusClass(lead.status)}`}
-                      >
-                        {leadStatusLabel(lead.status)}
-                      </Badge>
+                      {lead.status && (
+                        <Badge
+                          variant="outline"
+                          className={`h-5 shrink-0 px-1.5 text-[10px] ${leadStatusClass(lead.status)}`}
+                        >
+                          {leadStatusLabel(lead.status)}
+                        </Badge>
+                      )}
                     </button>
                   );
                 })}

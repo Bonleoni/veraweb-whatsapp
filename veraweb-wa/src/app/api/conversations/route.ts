@@ -12,6 +12,7 @@ type CustomerRow = {
   id: string
   name: string
   phone: string
+  status?: string | null
   chat_messages?: ChatMessageRow[] | null
 }
 
@@ -21,6 +22,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const businessId = searchParams.get("businessId")
 
+    const messageSelect = `
+          content,
+          direction,
+          status,
+          created_at
+        `
+
     let query = supabase
       .from("customers")
       .select(
@@ -28,11 +36,9 @@ export async function GET(request: Request) {
         id,
         name,
         phone,
+        status,
         chat_messages (
-          content,
-          direction,
-          status,
-          created_at
+          ${messageSelect}
         )
       `
       )
@@ -42,7 +48,35 @@ export async function GET(request: Request) {
       query = query.eq("business_id", businessId)
     }
 
-    const { data: customers, error } = await query
+    let { data: customers, error } = await query
+
+    // customers.status sütunu yoksa status olmadan tekrar dene
+    if (error && /status/i.test(error.message || "")) {
+      let fallback = supabase
+        .from("customers")
+        .select(
+          `
+          id,
+          name,
+          phone,
+          chat_messages (
+            ${messageSelect}
+          )
+        `
+        )
+        .order("created_at", {
+          foreignTable: "chat_messages",
+          ascending: false,
+        })
+
+      if (businessId) {
+        fallback = fallback.eq("business_id", businessId)
+      }
+
+      const retry = await fallback
+      customers = retry.data
+      error = retry.error
+    }
 
     if (error) throw error
 
@@ -58,10 +92,11 @@ export async function GET(request: Request) {
           id: customer.id,
           name: customer.name,
           phone: customer.phone,
+          status: customer.status || null,
           lastMessage: lastMessage?.content || "Henüz mesaj yok",
           lastMessageTime: lastMessage?.created_at || null,
           direction: lastMessage?.direction || null,
-          status: lastMessage?.status || null,
+          messageStatus: lastMessage?.status || null,
           unreadCount: 0,
         }
       }
