@@ -406,28 +406,32 @@ export default function ConversationsPage() {
   };
 
   const modeTabs = (
-    <div className="mb-2 flex gap-1">
+    <div className="flex h-10 border-b border-zinc-200">
       <Button
-        variant={mode === 'customers' ? 'default' : 'outline'}
+        variant={mode === 'customers' ? 'default' : 'ghost'}
         size="sm"
         onClick={switchToCustomers}
-        className={`h-7 flex-1 px-2 text-xs ${
-          mode === 'customers' ? 'bg-zinc-950 text-white' : ''
+        className={`h-10 flex-1 rounded-none text-xs ${
+          mode === 'customers'
+            ? 'border-b-2 border-zinc-950 bg-zinc-950 text-white'
+            : ''
         }`}
       >
-        <User className="h-3 w-3" />
-        <span className="ml-1">Müşteriler</span>
+        <User className="mr-1 h-3 w-3" />
+        Müşteriler
       </Button>
       <Button
-        variant={mode === 'leads' ? 'default' : 'outline'}
+        variant={mode === 'leads' ? 'default' : 'ghost'}
         size="sm"
         onClick={switchToLeads}
-        className={`h-7 flex-1 px-2 text-xs ${
-          mode === 'leads' ? 'bg-zinc-950 text-white' : ''
+        className={`h-10 flex-1 rounded-none text-xs ${
+          mode === 'leads'
+            ? 'border-b-2 border-zinc-950 bg-zinc-950 text-white'
+            : ''
         }`}
       >
-        <Building2 className="h-3 w-3" />
-        <span className="ml-1">Adaylar</span>
+        <Building2 className="mr-1 h-3 w-3" />
+        Adaylar
       </Button>
     </div>
   );
@@ -556,7 +560,7 @@ export default function ConversationsPage() {
         {mode === 'customers' ? (
           <>
             <div className="flex h-full w-56 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
+              <div className="flex h-10 shrink-0 items-center border-b border-zinc-200 px-3">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                   Pilates İşletmeleri
                 </p>
@@ -592,20 +596,18 @@ export default function ConversationsPage() {
             </div>
 
             <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
-              <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
+              <div className="shrink-0 border-b border-zinc-200">
                 {modeTabs}
-                <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                  Müşteriler ({customers.length})
-                  {selectedBusiness ? ` · ${selectedBusiness.name}` : ''}
-                </p>
-                <div className="relative">
-                  <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
-                  <Input
-                    placeholder="Müşteri ara..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 pl-8 text-sm"
-                  />
+                <div className="p-2">
+                  <div className="relative">
+                    <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
+                    <Input
+                      placeholder="Müşteri ara..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-8 pl-8 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
               <ScrollArea className="min-h-0 flex-1">
@@ -649,19 +651,18 @@ export default function ConversationsPage() {
           </>
         ) : (
           <div className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-200 bg-white">
-            <div className="shrink-0 border-b border-zinc-200 p-2 pt-0">
+            <div className="shrink-0 border-b border-zinc-200">
               {modeTabs}
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                Adaylar ({leads.length})
-              </p>
-              <div className="relative">
-                <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
-                <Input
-                  placeholder="Aday ara..."
-                  value={leadSearchQuery}
-                  onChange={(e) => setLeadSearchQuery(e.target.value)}
-                  className="h-8 pl-8 text-sm"
-                />
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400" />
+                  <Input
+                    placeholder="Aday ara..."
+                    value={leadSearchQuery}
+                    onChange={(e) => setLeadSearchQuery(e.target.value)}
+                    className="h-8 pl-8 text-sm"
+                  />
+                </div>
               </div>
             </div>
             <ScrollArea className="min-h-0 flex-1">
@@ -723,7 +724,7 @@ export default function ConversationsPage() {
           >
             {activeChat ? (
               <>
-                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3 py-2">
+                <div className="flex h-10 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3">
                   <Button
                     variant={conversationFilter === 'open' ? 'default' : 'ghost'}
                     size="sm"
@@ -1054,7 +1055,7 @@ export default function ConversationsPage() {
 
           {showContactDetails && activeChat && (
             <div className="flex h-full w-72 shrink-0 flex-col overflow-y-auto bg-white">
-              <div className="flex items-center justify-between border-b border-zinc-200 p-3">
+              <div className="flex h-10 items-center justify-between border-b border-zinc-200 px-3">
                 <h3 className="text-sm font-semibold text-zinc-950">
                   Contact Details
                 </h3>
