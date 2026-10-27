@@ -109,6 +109,7 @@ const STATUS_CONFIG: Record<
   string,
   { label: string; className: string }
 > = {
+  // İngilizce
   new: { label: 'Yeni', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   contacted: {
     label: 'İletişimde',
@@ -124,6 +125,50 @@ const STATUS_CONFIG: Record<
   },
   rejected: {
     label: 'Reddedildi',
+    className: 'bg-zinc-50 text-zinc-700 border-zinc-200',
+  },
+  // Türkçe
+  yeni: { label: 'Yeni', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  iletişimde: {
+    label: 'İletişimde',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  iletisimde: {
+    label: 'İletişimde',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  ilgili: {
+    label: 'İlgili',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  dönüştü: {
+    label: 'Dönüştü',
+    className: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
+  donustu: {
+    label: 'Dönüştü',
+    className: 'bg-purple-50 text-purple-700 border-purple-200',
+  },
+  reddedildi: {
+    label: 'Reddedildi',
+    className: 'bg-zinc-50 text-zinc-700 border-zinc-200',
+  },
+};
+
+const CONVERSATION_STATUS_CONFIG: Record<
+  string,
+  { label: string; className: string }
+> = {
+  open: {
+    label: 'Açık',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  snoozed: {
+    label: 'Ertelenen',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  done: {
+    label: 'Tamamlanan',
     className: 'bg-zinc-50 text-zinc-700 border-zinc-200',
   },
 };
@@ -158,13 +203,19 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('tr-TR');
 }
 
+function normalizeLeadStatus(status?: string | null) {
+  return status?.trim().toLocaleLowerCase('tr-TR') || '';
+}
+
 function leadStatusLabel(status?: string | null) {
-  if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].label;
-  return status || '';
+  const key = normalizeLeadStatus(status);
+  if (key && STATUS_CONFIG[key]) return STATUS_CONFIG[key].label;
+  return status?.trim() || '';
 }
 
 function leadStatusClass(status?: string | null) {
-  if (status && STATUS_CONFIG[status]) return STATUS_CONFIG[status].className;
+  const key = normalizeLeadStatus(status);
+  if (key && STATUS_CONFIG[key]) return STATUS_CONFIG[key].className;
   return 'bg-zinc-50 text-zinc-700 border-zinc-200';
 }
 
@@ -799,14 +850,27 @@ export default function ConversationsPage() {
                           </p>
                         )}
                       </div>
-                      {lead.status && (
+                      {lead.status ? (
                         <Badge
                           variant="outline"
                           className={`h-5 shrink-0 px-1.5 text-[10px] ${leadStatusClass(lead.status)}`}
                         >
                           {leadStatusLabel(lead.status)}
                         </Badge>
-                      )}
+                      ) : lead.conversation_status ? (
+                        <Badge
+                          variant="outline"
+                          className={`h-5 shrink-0 px-1.5 text-[10px] ${
+                            CONVERSATION_STATUS_CONFIG[
+                              lead.conversation_status
+                            ]?.className ||
+                            'bg-zinc-50 text-zinc-700 border-zinc-200'
+                          }`}
+                        >
+                          {CONVERSATION_STATUS_CONFIG[lead.conversation_status]
+                            ?.label || lead.conversation_status}
+                        </Badge>
+                      ) : null}
                     </button>
                   );
                 })}
