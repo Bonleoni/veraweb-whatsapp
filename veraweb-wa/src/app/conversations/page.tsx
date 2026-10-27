@@ -411,10 +411,10 @@ export default function ConversationsPage() {
         variant={mode === 'customers' ? 'default' : 'ghost'}
         size="sm"
         onClick={switchToCustomers}
-        className={`h-10 flex-1 rounded-none text-xs ${
+        className={`h-10 flex-1 rounded-none text-xs transition-all ${
           mode === 'customers'
-            ? 'border-b-2 border-zinc-950 bg-zinc-950 text-white'
-            : ''
+            ? 'border-b-2 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700'
+            : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
         }`}
       >
         <User className="mr-1 h-3 w-3" />
@@ -424,10 +424,10 @@ export default function ConversationsPage() {
         variant={mode === 'leads' ? 'default' : 'ghost'}
         size="sm"
         onClick={switchToLeads}
-        className={`h-10 flex-1 rounded-none text-xs ${
+        className={`h-10 flex-1 rounded-none text-xs transition-all ${
           mode === 'leads'
-            ? 'border-b-2 border-zinc-950 bg-zinc-950 text-white'
-            : ''
+            ? 'border-b-2 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700'
+            : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
         }`}
       >
         <Building2 className="mr-1 h-3 w-3" />
@@ -725,11 +725,11 @@ export default function ConversationsPage() {
                     variant={conversationFilter === 'open' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setConversationFilter('open')}
-                    className={
+                    className={`h-7 transition-all ${
                       conversationFilter === 'open'
-                        ? 'h-7 bg-zinc-950 text-white'
-                        : 'h-7'
-                    }
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
                   >
                     <Inbox className="mr-1.5 h-3.5 w-3.5" />
                     Açık
@@ -740,11 +740,11 @@ export default function ConversationsPage() {
                     }
                     size="sm"
                     onClick={() => setConversationFilter('snoozed')}
-                    className={
+                    className={`h-7 transition-all ${
                       conversationFilter === 'snoozed'
-                        ? 'h-7 bg-zinc-950 text-white'
-                        : 'h-7'
-                    }
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
                   >
                     <Clock className="mr-1.5 h-3.5 w-3.5" />
                     Ertelenen
@@ -753,11 +753,11 @@ export default function ConversationsPage() {
                     variant={conversationFilter === 'done' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setConversationFilter('done')}
-                    className={
+                    className={`h-7 transition-all ${
                       conversationFilter === 'done'
-                        ? 'h-7 bg-zinc-950 text-white'
-                        : 'h-7'
-                    }
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
                   >
                     <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                     Tamamlanan
@@ -769,7 +769,11 @@ export default function ConversationsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    className="h-7 gap-1.5"
+                    className={`h-7 gap-1.5 transition-all ${
+                      showQuickReplies
+                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
                   >
                     <Zap className="h-3.5 w-3.5" />
                     Hızlı Yanıtlar
@@ -779,7 +783,11 @@ export default function ConversationsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowContactDetails(!showContactDetails)}
-                    className="h-7 gap-1.5"
+                    className={`h-7 gap-1.5 transition-all ${
+                      showContactDetails
+                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
                   >
                     {showContactDetails ? (
                       <PanelRightClose className="h-3.5 w-3.5" />
