@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,9 +29,6 @@ import {
   Image as ImageIcon,
   File as FileIcon,
   Video,
-  Inbox,
-  Clock,
-  CheckCircle,
   Zap,
   ExternalLink,
   Camera,
@@ -311,7 +309,8 @@ const MESSAGE_TEMPLATES = [
   },
 ];
 
-export default function ConversationsPage() {
+function ConversationsPageContent() {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<'customers' | 'leads'>('customers');
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -336,6 +335,15 @@ export default function ConversationsPage() {
   >('open');
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const filter = searchParams.get('filter');
+    if (filter && ['open', 'snoozed', 'done'].includes(filter)) {
+      setConversationFilter(filter as 'open' | 'snoozed' | 'done');
+    } else {
+      setConversationFilter('open');
+    }
+  }, [searchParams]);
 
   const loadBusinesses = async () => {
     try {
@@ -903,50 +911,8 @@ export default function ConversationsPage() {
             <>
               <div className="flex h-10 shrink-0 border-b border-zinc-200 bg-white">
                 <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-                  <Button
-                    variant={conversationFilter === 'open' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setConversationFilter('open')}
-                    className={`h-7 transition-all ${
-                      conversationFilter === 'open'
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
-                    }`}
-                  >
-                    <Inbox className="mr-1.5 h-3.5 w-3.5" />
-                    Açık
-                  </Button>
-                  <Button
-                    variant={
-                      conversationFilter === 'snoozed' ? 'default' : 'ghost'
-                    }
-                    size="sm"
-                    onClick={() => setConversationFilter('snoozed')}
-                    className={`h-7 transition-all ${
-                      conversationFilter === 'snoozed'
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
-                    }`}
-                  >
-                    <Clock className="mr-1.5 h-3.5 w-3.5" />
-                    Ertelenen
-                  </Button>
-                  <Button
-                    variant={conversationFilter === 'done' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setConversationFilter('done')}
-                    className={`h-7 transition-all ${
-                      conversationFilter === 'done'
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                        : 'text-zinc-600 hover:bg-emerald-50 hover:text-emerald-700'
-                    }`}
-                  >
-                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                    Tamamlanan
-                  </Button>
-
                   {mode === 'leads' && selectedLead && (
-                    <div className="ml-2 flex items-center gap-1 border-l border-zinc-200 pl-2">
+                    <div className="flex items-center gap-1">
                       <Button
                         variant={
                           (selectedLead.conversation_status || 'open') ===
@@ -1590,5 +1556,19 @@ export default function ConversationsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConversationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="-m-4 flex h-[calc(100vh-48px)] items-center justify-center bg-white text-sm text-zinc-500">
+          Yükleniyor...
+        </div>
+      }
+    >
+      <ConversationsPageContent />
+    </Suspense>
   );
 }
