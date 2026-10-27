@@ -73,6 +73,7 @@ interface Lead {
   website?: string | null;
   website_type?: string | null;
   notes?: string | null;
+  conversation_status?: 'open' | 'snoozed' | 'done' | null;
 }
 
 function parsePhotoUrls(value: Lead['photo_urls']): string[] {
@@ -313,6 +314,49 @@ export default function ConversationsPage() {
     }
   };
 
+  const updateConversationStatus = async (
+    status: 'open' | 'snoozed' | 'done',
+    leadId?: string
+  ) => {
+    const targetLeadId = leadId || selectedLead?.id;
+    if (!targetLeadId) return;
+
+    const labels = {
+      open: 'Açık',
+      snoozed: 'Ertelenen',
+      done: 'Tamamlanan',
+    } as const;
+
+    try {
+      const res = await fetch('/api/leads/conversation-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: targetLeadId, status }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setSelectedLead((prev) =>
+          prev && prev.id === targetLeadId
+            ? { ...prev, conversation_status: status }
+            : prev
+        );
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === targetLeadId ? { ...l, conversation_status: status } : l
+          )
+        );
+        toast.success(`Durum "${labels[status]}" olarak güncellendi`);
+      } else {
+        toast.error(data.error || 'Güncellenemedi');
+      }
+    } catch (error) {
+      console.error('Durum güncelleme hatası:', error);
+      toast.error('Güncellenemedi');
+    }
+  };
+
   const loadMessages = async (contactId: string, isLead = false) => {
     try {
       const url = isLead
@@ -322,6 +366,23 @@ export default function ConversationsPage() {
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);
+
+        if (isLead) {
+          const currentStatus =
+            selectedLead?.id === contactId
+              ? selectedLead.conversation_status || 'open'
+              : null;
+          if (currentStatus && currentStatus !== 'open') {
+            const hasNewInbound = (data.data as Message[] | undefined)?.some(
+              (m) =>
+                m.direction === 'inbound' &&
+                new Date(m.created_at) > new Date(Date.now() - 60000)
+            );
+            if (hasNewInbound) {
+              await updateConversationStatus('open', contactId);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Mesajlar yüklenemedi:', error);
@@ -549,12 +610,14 @@ export default function ConversationsPage() {
   }, [customers, searchQuery, conversationFilter]);
 
   const filteredLeads = useMemo(() => {
-    if (conversationFilter === 'snoozed' || conversationFilter === 'done') {
-      return [];
-    }
     const q = leadSearchQuery.trim().toLowerCase();
-    if (!q) return leads;
     return leads.filter((lead) => {
+      const status = lead.conversation_status || 'open';
+      if (conversationFilter === 'open' && status !== 'open') return false;
+      if (conversationFilter === 'snoozed' && status !== 'snoozed') return false;
+      if (conversationFilter === 'done' && status !== 'done') return false;
+
+      if (!q) return true;
       const name = lead.business_name?.toLowerCase() ?? '';
       const contact = lead.name?.toLowerCase() ?? '';
       const phone = lead.phone?.toLowerCase() ?? '';
@@ -725,7 +788,13 @@ export default function ConversationsPage() {
                 })}
                 {filteredLeads.length === 0 && (
                   <div className="p-8 text-center text-sm text-zinc-500">
-                    Henüz aday yok
+                    {conversationFilter === 'open'
+                      ? 'Açık konuşma yok'
+                      : conversationFilter === 'snoozed'
+                        ? 'Ertelenen konuşma yok'
+                        : conversationFilter === 'done'
+                          ? 'Tamamlanan konuşma yok'
+                          : 'Henüz aday yok'}
                   </div>
                 )}
               </div>
@@ -779,6 +848,61 @@ export default function ConversationsPage() {
                     <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                     Tamamlanan
                   </Button>
+
+                  {mode === 'leads' && selectedLead && (
+                    <div className="ml-2 flex items-center gap-1 border-l border-zinc-200 pl-2">
+                      <Button
+                        variant={
+                          (selectedLead.conversation_status || 'open') ===
+                          'open'
+                            ? 'default'
+                            : 'ghost'
+                        }
+                        size="sm"
+                        onClick={() => updateConversationStatus('open')}
+                        className={`h-7 text-xs ${
+                          (selectedLead.conversation_status || 'open') ===
+                          'open'
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'text-zinc-600'
+                        }`}
+                      >
+                        Açık
+                      </Button>
+                      <Button
+                        variant={
+                          selectedLead.conversation_status === 'snoozed'
+                            ? 'default'
+                            : 'ghost'
+                        }
+                        size="sm"
+                        onClick={() => updateConversationStatus('snoozed')}
+                        className={`h-7 text-xs ${
+                          selectedLead.conversation_status === 'snoozed'
+                            ? 'bg-amber-500 text-white hover:bg-amber-600'
+                            : 'text-zinc-600'
+                        }`}
+                      >
+                        Ertelenen
+                      </Button>
+                      <Button
+                        variant={
+                          selectedLead.conversation_status === 'done'
+                            ? 'default'
+                            : 'ghost'
+                        }
+                        size="sm"
+                        onClick={() => updateConversationStatus('done')}
+                        className={`h-7 text-xs ${
+                          selectedLead.conversation_status === 'done'
+                            ? 'bg-zinc-500 text-white hover:bg-zinc-600'
+                            : 'text-zinc-600'
+                        }`}
+                      >
+                        Tamamlanan
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="flex-1" />
 

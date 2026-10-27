@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('leads')
-      .select('*')
+      .select('*, conversation_status')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
