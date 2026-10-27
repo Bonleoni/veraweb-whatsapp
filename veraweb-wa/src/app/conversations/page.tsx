@@ -313,9 +313,12 @@ export default function ConversationsPage() {
     }
   };
 
-  const loadMessages = async (customerId: string) => {
+  const loadMessages = async (contactId: string, isLead = false) => {
     try {
-      const res = await fetch(`/api/messages/history?customerId=${customerId}`);
+      const url = isLead
+        ? `/api/messages/history?customerId=${contactId}&isLead=true`
+        : `/api/messages/history?customerId=${contactId}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);
@@ -460,13 +463,11 @@ export default function ConversationsPage() {
   const selectCustomer = (customer: Customer) => {
     setSelectedLead(null);
     setSelectedCustomer(customer);
-    loadMessages(customer.id);
   };
 
   const selectLead = (lead: Lead) => {
     setSelectedCustomer(null);
     setSelectedLead(lead);
-    setMessages([]);
   };
 
   useEffect(() => {
@@ -494,19 +495,35 @@ export default function ConversationsPage() {
     }
   }, [selectedBusiness, mode]);
 
+  // Seçili kişi değişince geçmişi yükle
+  useEffect(() => {
+    if (selectedLead) {
+      loadMessages(selectedLead.id, true);
+    } else if (selectedCustomer) {
+      loadMessages(selectedCustomer.id, false);
+    } else {
+      setMessages([]);
+    }
+  }, [selectedLead, selectedCustomer]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Polling — gelen mesajlar için
   useEffect(() => {
-    if (mode !== 'customers' || !selectedCustomer) return;
+    if (!selectedLead && !selectedCustomer) return;
 
     const interval = setInterval(() => {
-      loadMessages(selectedCustomer.id);
+      if (selectedLead) {
+        loadMessages(selectedLead.id, true);
+      } else if (selectedCustomer) {
+        loadMessages(selectedCustomer.id, false);
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [selectedCustomer, mode]);
+  }, [selectedLead, selectedCustomer]);
 
   useEffect(() => {
     if (mode !== 'customers' || !selectedBusiness) return;

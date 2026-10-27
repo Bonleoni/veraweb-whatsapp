@@ -291,7 +291,6 @@ export async function persistInboundWhatsAppMessage(params: {
 
   if (customersError) {
     console.error("❌ Müşteriler okunamadı:", customersError)
-    return
   }
 
   const list = customers ?? []
@@ -302,7 +301,6 @@ export async function persistInboundWhatsAppMessage(params: {
     findCustomerByPhone(list, senderPhone)
 
   if (!customer) {
-    // Direkt eq denemesi (prompt ile uyumlu ekstra kontrol)
     const { data: directMatch } = await supabase
       .from("customers")
       .select("id, phone")
@@ -312,26 +310,64 @@ export async function persistInboundWhatsAppMessage(params: {
     if (directMatch) customer = directMatch
   }
 
-  if (!customer) {
+  if (customer) {
+    const { error } = await supabase.from("chat_messages").insert({
+      customer_id: customer.id,
+      direction: "inbound",
+      content: content.trim(),
+      status: "received",
+      created_at: toIsoFromWaTimestamp(timestamp),
+    })
+
+    if (error) {
+      console.error("❌ Mesaj kaydedilemedi:", error)
+    } else {
+      console.log(`✅ Mesaj kaydedildi (Müşteri ID: ${customer.id})`)
+    }
+    return
+  }
+
+  // Müşteri yoksa aday (lead) eşle
+  const { data: leads, error: leadsError } = await supabase
+    .from("leads")
+    .select("id, phone")
+
+  if (leadsError) {
+    console.error("❌ Adaylar okunamadı:", leadsError)
+    return
+  }
+
+  const lead = (leads ?? []).find(
+    (l) =>
+      phonesMatch(normalizePhone(l.phone || ""), resolvedPhone) ||
+      phonesMatch(normalizePhone(l.phone || ""), senderPhone)
+  )
+
+  if (!lead) {
     console.log(
-      `⚠️ Müşteri bulunamadı (Çözümlenen: ${resolvedPhone}, Ham: ${senderPhone})`
+      `⚠️ Müşteri/aday bulunamadı (Çözümlenen: ${resolvedPhone}, Ham: ${senderPhone})`
     )
     return
   }
 
-  const { error } = await supabase.from("chat_messages").insert({
-    customer_id: customer.id,
-    direction: "inbound",
+  const { error: leadMsgError } = await supabase.from("lead_messages").insert({
+    lead_id: lead.id,
     content: content.trim(),
     status: "received",
     created_at: toIsoFromWaTimestamp(timestamp),
   })
 
-  if (error) {
-    console.error("❌ Mesaj kaydedilemedi:", error)
-  } else {
-    console.log(`✅ Mesaj kaydedildi (Müşteri ID: ${customer.id})`)
+  if (leadMsgError) {
+    console.error("❌ Aday mesajı kaydedilemedi:", leadMsgError)
+    return
   }
+
+  await supabase
+    .from("leads")
+    .update({ last_contact_at: new Date().toISOString() })
+    .eq("id", lead.id)
+
+  console.log(`✅ Aday mesajı kaydedildi (Lead ID: ${lead.id})`)
 }
 
 /** Baileys socket'ine gelen mesaj dinleyicisini bağla */

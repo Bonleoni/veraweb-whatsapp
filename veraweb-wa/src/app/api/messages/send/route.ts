@@ -10,6 +10,42 @@ function normalizePhone(phone: string) {
   return phone.replace(/[^0-9]/g, "")
 }
 
+async function persistLeadMessage(
+  leadId: string,
+  content: string,
+  status: string
+) {
+  const { data, error } = await supabase
+    .from("lead_messages")
+    .insert({
+      lead_id: leadId,
+      content,
+      status,
+      sent_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+
+  await supabase
+    .from("leads")
+    .update({
+      status: "contacted",
+      last_contact_at: new Date().toISOString(),
+    })
+    .eq("id", leadId)
+
+  return {
+    id: data.id,
+    customer_id: leadId,
+    direction: "outbound" as const,
+    content: data.content,
+    status: data.status,
+    created_at: data.created_at || data.sent_at || new Date().toISOString(),
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     await connection()
@@ -57,17 +93,16 @@ export async function POST(request: NextRequest) {
       console.log(`🛡️ TEST MODE: ${phone} numarasına gönderim engellendi.`)
 
       if (isLead) {
+        const data = await persistLeadMessage(
+          customerId,
+          content,
+          "skipped_test"
+        )
         return NextResponse.json({
           success: true,
-          data: {
-            id: Date.now().toString(),
-            direction: "outbound",
-            content,
-            status: "skipped_test",
-            created_at: new Date().toISOString(),
-          },
+          data,
           message:
-            "Test modu: Mesaj kaydedildi ama WhatsApp'tan gönderilmedi.",
+            "Test modu: Mesaj veritabanına kaydedildi ama WhatsApp'tan gönderilmedi.",
         })
       }
 
@@ -111,16 +146,8 @@ export async function POST(request: NextRequest) {
 
     if (sent) {
       if (isLead) {
-        return NextResponse.json({
-          success: true,
-          data: {
-            id: Date.now().toString(),
-            direction: "outbound",
-            content,
-            status: "sent",
-            created_at: new Date().toISOString(),
-          },
-        })
+        const data = await persistLeadMessage(customerId, content, "sent")
+        return NextResponse.json({ success: true, data })
       }
 
       const { data, error } = await supabase
