@@ -677,10 +677,18 @@ export default function ConversationsPage() {
   const filteredLeads = useMemo(() => {
     const q = leadSearchQuery.trim().toLowerCase();
     return leads.filter((lead) => {
-      const status = lead.conversation_status || 'open';
-      if (conversationFilter === 'open' && status !== 'open') return false;
-      if (conversationFilter === 'snoozed' && status !== 'snoozed') return false;
-      if (conversationFilter === 'done' && status !== 'done') return false;
+      if (conversationFilter === 'open') {
+        if (
+          lead.conversation_status !== 'open' &&
+          Boolean(lead.conversation_status)
+        ) {
+          return false;
+        }
+      } else if (conversationFilter === 'snoozed') {
+        if (lead.conversation_status !== 'snoozed') return false;
+      } else if (conversationFilter === 'done') {
+        if (lead.conversation_status !== 'done') return false;
+      }
 
       if (!q) return true;
       const name = lead.business_name?.toLowerCase() ?? '';
@@ -850,25 +858,25 @@ export default function ConversationsPage() {
                           </p>
                         )}
                       </div>
-                      {lead.status ? (
-                        <Badge
-                          variant="outline"
-                          className={`h-5 shrink-0 px-1.5 text-[10px] ${leadStatusClass(lead.status)}`}
-                        >
-                          {leadStatusLabel(lead.status)}
-                        </Badge>
-                      ) : lead.conversation_status ? (
+                      {lead.conversation_status ? (
                         <Badge
                           variant="outline"
                           className={`h-5 shrink-0 px-1.5 text-[10px] ${
                             CONVERSATION_STATUS_CONFIG[
                               lead.conversation_status
                             ]?.className ||
-                            'bg-zinc-50 text-zinc-700 border-zinc-200'
+                            'bg-blue-50 text-blue-700 border-blue-200'
                           }`}
                         >
                           {CONVERSATION_STATUS_CONFIG[lead.conversation_status]
                             ?.label || lead.conversation_status}
+                        </Badge>
+                      ) : lead.status ? (
+                        <Badge
+                          variant="outline"
+                          className={`h-5 shrink-0 px-1.5 text-[10px] ${leadStatusClass(lead.status)}`}
+                        >
+                          {leadStatusLabel(lead.status)}
                         </Badge>
                       ) : null}
                     </button>
