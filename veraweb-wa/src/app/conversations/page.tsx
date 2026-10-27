@@ -716,15 +716,11 @@ export default function ConversationsPage() {
           </div>
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 bg-zinc-50/50">
-          <div
-            className={`flex min-w-0 flex-1 flex-col ${
-              showContactDetails && activeChat ? 'border-r border-zinc-200' : ''
-            }`}
-          >
-            {activeChat ? (
-              <>
-                <div className="flex h-10 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-50/50">
+          {activeChat ? (
+            <>
+              <div className="flex h-10 shrink-0 border-b border-zinc-200 bg-white">
+                <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
                   <Button
                     variant={conversationFilter === 'open' ? 'default' : 'ghost'}
                     size="sm"
@@ -794,6 +790,29 @@ export default function ConversationsPage() {
                   </Button>
                 </div>
 
+                {showContactDetails && (
+                  <div className="flex w-80 shrink-0 items-center justify-between border-l border-zinc-200 px-3">
+                    <h3 className="text-sm font-semibold text-zinc-950">
+                      Contact Details
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setShowContactDetails(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex min-h-0 flex-1">
+                <div
+                  className={`flex min-w-0 flex-1 flex-col ${
+                    showContactDetails ? 'border-r border-zinc-200' : ''
+                  }`}
+                >
                 <ScrollArea className="min-h-0 flex-1 p-4">
                   <div className="flex flex-col gap-3">
                     {messages.map((msg) => (
@@ -1040,35 +1059,10 @@ export default function ConversationsPage() {
                     </p>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <div className="text-center">
-                  <User className="mx-auto mb-3 size-12 text-zinc-300" />
-                  <p className="text-sm text-zinc-500">
-                    Soldan bir müşteri veya aday seçin
-                  </p>
                 </div>
-              </div>
-            )}
-          </div>
 
-          {showContactDetails && activeChat && (
-            <div className="flex h-full w-72 shrink-0 flex-col overflow-y-auto bg-white">
-              <div className="flex h-10 items-center justify-between border-b border-zinc-200 px-3">
-                <h3 className="text-sm font-semibold text-zinc-950">
-                  Contact Details
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setShowContactDetails(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
+                {showContactDetails && (
+                  <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
               <div className="border-b border-zinc-200 p-4">
                 <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
                   Contact Lists
@@ -1333,6 +1327,18 @@ export default function ConversationsPage() {
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">Aktif</p>
                 </div>
+              </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="text-center">
+                <User className="mx-auto mb-3 size-12 text-zinc-300" />
+                <p className="text-sm text-zinc-500">
+                  Soldan bir müşteri veya aday seçin
+                </p>
               </div>
             </div>
           )}
