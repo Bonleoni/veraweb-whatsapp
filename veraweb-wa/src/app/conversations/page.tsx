@@ -723,34 +723,18 @@ export default function ConversationsPage() {
           >
             {activeChat ? (
               <>
-                <div className="flex shrink-0 items-center justify-end border-b border-zinc-200 bg-white p-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowContactDetails(!showContactDetails)}
-                    className="gap-2 text-xs"
-                  >
-                    {showContactDetails ? (
-                      <PanelRightClose className="h-4 w-4" />
-                    ) : (
-                      <PanelRightOpen className="h-4 w-4" />
-                    )}
-                    {showContactDetails ? 'Gizle' : 'Detaylar'}
-                  </Button>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3 py-1.5">
+                <div className="flex shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3 py-2">
                   <Button
                     variant={conversationFilter === 'open' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setConversationFilter('open')}
                     className={
                       conversationFilter === 'open'
-                        ? 'bg-zinc-950 text-white'
-                        : ''
+                        ? 'h-7 bg-zinc-950 text-white'
+                        : 'h-7'
                     }
                   >
-                    <Inbox className="mr-2 h-4 w-4" />
+                    <Inbox className="mr-1.5 h-3.5 w-3.5" />
                     Açık
                   </Button>
                   <Button
@@ -761,11 +745,11 @@ export default function ConversationsPage() {
                     onClick={() => setConversationFilter('snoozed')}
                     className={
                       conversationFilter === 'snoozed'
-                        ? 'bg-zinc-950 text-white'
-                        : ''
+                        ? 'h-7 bg-zinc-950 text-white'
+                        : 'h-7'
                     }
                   >
-                    <Clock className="mr-2 h-4 w-4" />
+                    <Clock className="mr-1.5 h-3.5 w-3.5" />
                     Ertelenen
                   </Button>
                   <Button
@@ -774,11 +758,11 @@ export default function ConversationsPage() {
                     onClick={() => setConversationFilter('done')}
                     className={
                       conversationFilter === 'done'
-                        ? 'bg-zinc-950 text-white'
-                        : ''
+                        ? 'h-7 bg-zinc-950 text-white'
+                        : 'h-7'
                     }
                   >
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                     Tamamlanan
                   </Button>
 
@@ -788,10 +772,24 @@ export default function ConversationsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    className="gap-2"
+                    className="h-7 gap-1.5"
                   >
-                    <Zap className="h-4 w-4" />
+                    <Zap className="h-3.5 w-3.5" />
                     Hızlı Yanıtlar
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowContactDetails(!showContactDetails)}
+                    className="h-7 gap-1.5"
+                  >
+                    {showContactDetails ? (
+                      <PanelRightClose className="h-3.5 w-3.5" />
+                    ) : (
+                      <PanelRightOpen className="h-3.5 w-3.5" />
+                    )}
+                    {showContactDetails ? 'Gizle' : 'Detaylar'}
                   </Button>
                 </div>
 
