@@ -237,6 +237,22 @@ async function resolveSenderPhone(
 
 type PhoneContact = { id: string; phone: string | null }
 
+export const UNKNOWN_LEAD_NAME = "Bilinmeyen Aday"
+
+function formatDisplayPhone(phone: string) {
+  let digits = normalizePhone(phone)
+  if (digits.length === 10) digits = `90${digits}`
+  if (digits.startsWith("90") && digits.length >= 12) {
+    return `+90 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10)}`
+  }
+  return digits ? `+${digits}` : phone
+}
+
+function pickBestPhone(candidates: string[]) {
+  const sorted = [...candidates].sort((a, b) => b.length - a.length)
+  return sorted[0] || ""
+}
+
 function findByPhone(
   rows: PhoneContact[],
   candidates: string[]
@@ -259,6 +275,54 @@ function findByPhone(
   }
 
   return undefined
+}
+
+async function createUnknownLead(phoneDigits: string) {
+  const formattedPhone = formatDisplayPhone(phoneDigits)
+  console.log("⚠️ Bilinmeyen numara, otomatik lead oluşturuluyor:", formattedPhone)
+
+  const payload = {
+    business_name: UNKNOWN_LEAD_NAME,
+    phone: formattedPhone,
+    status: "new",
+    conversation_status: "open",
+    source: "whatsapp_inbound",
+    lead_number: `AUTO-${Date.now()}`,
+    created_at: new Date().toISOString(),
+  }
+
+  const { data: newLead, error: insertError } = await supabase
+    .from("leads")
+    .insert([payload])
+    .select("id, phone")
+    .single()
+
+  if (!insertError && newLead) {
+    console.log("✅ Otomatik lead oluşturuldu:", newLead.id)
+    return newLead as PhoneContact
+  }
+
+  // Bazı sütunlar yoksa minimal kayıt dene
+  console.warn("⚠️ Tam lead insert başarısız, minimal denenecek:", insertError)
+  const { data: minimal, error: minimalError } = await supabase
+    .from("leads")
+    .insert([
+      {
+        business_name: UNKNOWN_LEAD_NAME,
+        phone: formattedPhone,
+        status: "new",
+      },
+    ])
+    .select("id, phone")
+    .single()
+
+  if (minimalError || !minimal) {
+    console.error("❌ Otomatik lead oluşturulamadı:", minimalError || insertError)
+    return null
+  }
+
+  console.log("✅ Otomatik lead oluşturuldu (minimal):", minimal.id)
+  return minimal as PhoneContact
 }
 
 /** Gelen WhatsApp mesajını doğru lead/customer'a yaz */
@@ -323,7 +387,7 @@ export async function persistInboundWhatsAppMessage(params: {
   ])
 
   // Önce lead, sonra customer — outreach cevapları adaya düşsün
-  const lead = findByPhone(leads ?? [], phoneCandidates)
+  let lead = findByPhone(leads ?? [], phoneCandidates)
   const customer = findByPhone(customers ?? [], phoneCandidates)
 
   console.log("🔎 Eşleşme:", {
@@ -332,6 +396,13 @@ export async function persistInboundWhatsAppMessage(params: {
     customerId: customer?.id ?? null,
     customerPhone: customer?.phone ?? null,
   })
+
+  // Eşleşme yoksa otomatik "Bilinmeyen Aday" lead oluştur
+  if (!lead && !customer) {
+    const created = await createUnknownLead(pickBestPhone(phoneCandidates))
+    if (!created) return
+    lead = created
+  }
 
   const createdAt = toIsoFromWaTimestamp(timestamp)
 
@@ -377,10 +448,7 @@ export async function persistInboundWhatsAppMessage(params: {
         phone: customer.phone,
       })
     }
-    return
   }
-
-  console.warn("⚠️ Eşleşen lead/customer bulunamadı:", phoneCandidates)
 }
 
 /** Baileys socket'ine gelen mesaj dinleyicisini bağla */
