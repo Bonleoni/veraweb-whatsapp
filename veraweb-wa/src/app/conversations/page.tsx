@@ -32,8 +32,16 @@ import {
   Zap,
   ExternalLink,
   Camera,
+  AlertCircle,
+  Edit,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const UNKNOWN_LEAD_NAME = 'Bilinmeyen Aday';
+
+function isUnknownLead(lead: { business_name?: string | null } | null) {
+  return lead?.business_name?.trim() === UNKNOWN_LEAD_NAME;
+}
 
 interface Business {
   id: string;
@@ -334,6 +342,14 @@ function ConversationsPageContent() {
     'open' | 'snoozed' | 'done'
   >('open');
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingLead, setSavingLead] = useState(false);
+  const [editForm, setEditForm] = useState({
+    business_name: '',
+    name: '',
+    email: '',
+    city: '',
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -344,6 +360,61 @@ function ConversationsPageContent() {
       setConversationFilter('open');
     }
   }, [searchParams]);
+
+  const openEditLeadModal = () => {
+    if (!selectedLead) return;
+    setEditForm({
+      business_name:
+        selectedLead.business_name === UNKNOWN_LEAD_NAME
+          ? ''
+          : selectedLead.business_name || '',
+      name: selectedLead.name || '',
+      email: selectedLead.email || '',
+      city: selectedLead.city || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveLead = async () => {
+    if (!selectedLead) return;
+    const businessName = editForm.business_name.trim();
+    if (!businessName) {
+      toast.error('İşletme adı gerekli');
+      return;
+    }
+
+    setSavingLead(true);
+    try {
+      const res = await fetch(`/api/leads/${selectedLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_name: businessName,
+          name: editForm.name.trim() || null,
+          email: editForm.email.trim() || null,
+          city: editForm.city.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || 'Kaydedilemedi');
+        return;
+      }
+
+      const updated = data.data as Lead;
+      setSelectedLead(updated);
+      setLeads((prev) =>
+        prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
+      );
+      setShowEditModal(false);
+      toast.success('Aday bilgileri güncellendi');
+    } catch (error) {
+      console.error('Aday güncellenemedi:', error);
+      toast.error('Kaydedilemedi');
+    } finally {
+      setSavingLead(false);
+    }
+  };
 
   const loadBusinesses = async () => {
     try {
@@ -837,6 +908,7 @@ function ConversationsPageContent() {
             <ScrollArea className="min-h-0 flex-1">
               <div className="flex flex-col">
                 {filteredLeads.map((lead) => {
+                  const unknown = isUnknownLead(lead);
                   const businessName =
                     lead.business_name?.trim() || 'İsimsiz işletme';
                   return (
@@ -850,11 +922,25 @@ function ConversationsPageContent() {
                           : 'border-transparent hover:bg-zinc-50'
                       }`}
                     >
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-sm font-semibold text-white">
-                        {initials(businessName)}
-                      </div>
+                      <Avatar className="size-10 shrink-0">
+                        <AvatarFallback
+                          className={
+                            unknown
+                              ? 'bg-zinc-200 text-xs font-semibold text-zinc-600'
+                              : 'bg-gradient-to-br from-emerald-400 to-teal-500 text-xs font-semibold text-white'
+                          }
+                        >
+                          {unknown ? '?' : initials(businessName)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-zinc-950">
+                        <p
+                          className={`truncate text-sm font-medium ${
+                            unknown
+                              ? 'italic text-zinc-500'
+                              : 'text-zinc-950'
+                          }`}
+                        >
                           {businessName}
                         </p>
                         <p className="truncate text-xs text-zinc-500">
@@ -1274,6 +1360,31 @@ function ConversationsPageContent() {
 
                 {showContactDetails && (
                   <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
+              {mode === 'leads' && isUnknownLead(selectedLead) && (
+                <div className="border-b border-zinc-200 bg-amber-50 p-4">
+                  <div className="mb-3 flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">
+                        Bu adayın bilgileri eksik
+                      </p>
+                      <p className="mt-1 text-xs text-amber-700">
+                        Lütfen işletme bilgilerini tamamlayın
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={openEditLeadModal}
+                    className="w-full bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Bilgileri Tamamla
+                  </Button>
+                </div>
+              )}
+
               <div className="border-b border-zinc-200 p-4">
                 <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
                   Contact Lists
@@ -1301,7 +1412,13 @@ function ConversationsPageContent() {
                   Contact Information
                 </h4>
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-zinc-950">
+                  <p
+                    className={`text-sm font-medium ${
+                      isUnknownLead(selectedLead)
+                        ? 'italic text-zinc-500'
+                        : 'text-zinc-950'
+                    }`}
+                  >
                     {mode === 'customers'
                       ? selectedCustomer?.name
                       : selectedLead?.business_name?.trim() ||
@@ -1555,6 +1672,88 @@ function ConversationsPageContent() {
           )}
         </div>
       </div>
+
+      {showEditModal && selectedLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowEditModal(false)}
+          />
+          <div className="relative w-96 rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold text-zinc-950">
+              Aday Bilgilerini Tamamla
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-zinc-500">
+                  İşletme Adı
+                </label>
+                <Input
+                  value={editForm.business_name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, business_name: e.target.value })
+                  }
+                  placeholder="Örn: XYZ Pilates"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-500">
+                  Sahip Adı
+                </label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, name: e.target.value })
+                  }
+                  placeholder="Örn: Ahmet Yılmaz"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-500">
+                  E-posta
+                </label>
+                <Input
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  placeholder="ornek@mail.com"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-500">
+                  Şehir
+                </label>
+                <Input
+                  value={editForm.city}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, city: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1"
+                disabled={savingLead}
+              >
+                İptal
+              </Button>
+              <Button
+                onClick={handleSaveLead}
+                className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={savingLead}
+              >
+                {savingLead ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
