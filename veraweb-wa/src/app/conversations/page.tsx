@@ -101,27 +101,31 @@ function parsePhotoUrls(value: Lead['photo_urls']): string[] {
   return [];
 }
 
-/** Instagram CDN hotlink engelini aşmak için sunucu proxy */
-function proxiedMediaUrl(url?: string | null) {
-  if (!url) return '';
-  if (url.startsWith('/api/media/proxy')) return url;
-  // Supabase storage / kendi domain — proxy gerekmez
+/** Instagram CDN CORS/403 için kendi API proxy'miz */
+function getProxyImageUrl(url: string | null | undefined) {
+  if (!url?.trim()) return null;
+  const raw = url.trim();
   if (
-    url.includes('supabase.co/storage') ||
-    url.startsWith('/') ||
-    url.startsWith('data:')
+    raw.startsWith('/api/proxy-instagram-image') ||
+    raw.startsWith('/api/media/proxy') ||
+    raw.startsWith('data:')
   ) {
-    return url;
+    return raw;
   }
-  return `/api/media/proxy?url=${encodeURIComponent(url)}`;
+  // Supabase storage zaten same-origin/public
+  if (raw.includes('supabase.co/storage')) return raw;
+  return `/api/proxy-instagram-image?url=${encodeURIComponent(raw)}`;
 }
 
-/** Liste/detay avatar: YALNIZCA instagram_profile_pic_url (photo_url / photo_urls ASLA) */
+/** Liste/detay avatar: YALNIZCA instagram_profile_pic_url */
 function leadProfilePicUrl(lead: {
   instagram_profile_pic_url?: string | null;
 }) {
-  const ig = lead.instagram_profile_pic_url?.trim();
-  return ig ? proxiedMediaUrl(ig) : '';
+  return getProxyImageUrl(lead.instagram_profile_pic_url) || '';
+}
+
+function proxiedMediaUrl(url?: string | null) {
+  return getProxyImageUrl(url) || '';
 }
 
 function getInstagramUsername(lead: Lead): string | null {
