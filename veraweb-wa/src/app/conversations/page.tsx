@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -929,16 +929,31 @@ function ConversationsPageContent() {
                           : 'border-transparent hover:bg-zinc-50'
                       }`}
                     >
-                      <Avatar className="size-10 shrink-0">
+                      <Avatar className="relative size-10 shrink-0">
+                        {lead.instagram_profile_pic_url ? (
+                          <AvatarImage
+                            src={proxiedMediaUrl(
+                              lead.instagram_profile_pic_url
+                            )}
+                            alt={businessName}
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
                         <AvatarFallback
-                          className={
+                          className={`text-xs font-semibold ${
                             unknown
-                              ? 'bg-zinc-200 text-xs font-semibold text-zinc-600'
-                              : 'bg-gradient-to-br from-emerald-400 to-teal-500 text-xs font-semibold text-white'
-                          }
+                              ? 'bg-zinc-200 text-zinc-600'
+                              : lead.instagram_username &&
+                                  !lead.instagram_profile_pic_url
+                                ? 'bg-amber-400 text-white'
+                                : 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white'
+                          }`}
                         >
                           {unknown ? '?' : initials(businessName)}
                         </AvatarFallback>
+                        {lead.instagram_username && (
+                          <div className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white bg-gradient-to-r from-purple-500 to-pink-500" />
+                        )}
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p
@@ -1095,7 +1110,7 @@ function ConversationsPageContent() {
                 </div>
 
                 {showContactDetails && (
-                  <div className="flex w-80 shrink-0 items-center justify-between border-l border-zinc-200 px-3">
+                  <div className="flex w-[520px] shrink-0 items-center justify-between border-l border-zinc-200 px-3">
                     <h3 className="text-sm font-semibold text-zinc-950">
                       Contact Details
                     </h3>
@@ -1366,331 +1381,359 @@ function ConversationsPageContent() {
                 </div>
 
                 {showContactDetails && (
-                  <div className="flex h-full w-80 shrink-0 flex-col overflow-y-auto bg-white">
-              {mode === 'leads' && isUnknownLead(selectedLead) && (
-                <div className="border-b border-zinc-200 bg-amber-50 p-4">
-                  <div className="mb-3 flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-900">
-                        Bu adayın bilgileri eksik
-                      </p>
-                      <p className="mt-1 text-xs text-amber-700">
-                        Lütfen işletme bilgilerini tamamlayın
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={openEditLeadModal}
-                    className="w-full bg-amber-600 text-white hover:bg-amber-700"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Bilgileri Tamamla
-                  </Button>
-                </div>
-              )}
+                  <div className="flex h-full w-[520px] shrink-0 flex-col overflow-y-auto bg-white">
+                    {mode === 'leads' && selectedLead ? (
+                      <>
+                        {isUnknownLead(selectedLead) && (
+                          <div className="border-b border-zinc-200 bg-amber-50 p-4">
+                            <div className="mb-3 flex items-start gap-2">
+                              <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600" />
+                              <div>
+                                <p className="text-sm font-medium text-amber-900">
+                                  Bu adayın bilgileri eksik
+                                </p>
+                                <p className="mt-1 text-xs text-amber-700">
+                                  Lütfen işletme bilgilerini tamamlayın
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={openEditLeadModal}
+                              className="w-full bg-amber-600 text-white hover:bg-amber-700"
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Bilgileri Tamamla
+                            </Button>
+                          </div>
+                        )}
 
-              <div className="border-b border-zinc-200 p-4">
-                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                  Contact Lists
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <Badge
-                    variant="outline"
-                    className="bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    {mode === 'customers' ? 'Müşteri' : 'Aday'}
-                  </Badge>
-                  {selectedLead?.status && (
-                    <Badge
-                      variant="outline"
-                      className={leadStatusClass(selectedLead.status)}
-                    >
-                      {leadStatusLabel(selectedLead.status)}
-                    </Badge>
-                  )}
-                </div>
-              </div>
+                        <div className="border-b border-zinc-200 bg-gradient-to-b from-purple-50/50 to-white p-6">
+                          <div className="mb-4 flex items-center gap-4">
+                            {selectedLead.instagram_profile_pic_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={proxiedMediaUrl(
+                                  selectedLead.instagram_profile_pic_url
+                                )}
+                                alt="Profile"
+                                referrerPolicy="no-referrer"
+                                className="h-24 w-24 rounded-full border-4 border-white object-cover shadow-lg"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget
+                                    .nextElementSibling;
+                                  if (fallback instanceof HTMLElement) {
+                                    fallback.classList.remove('hidden');
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className={`flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
+                                selectedLead.instagram_profile_pic_url
+                                  ? 'hidden'
+                                  : ''
+                              }`}
+                            >
+                              <Camera className="h-12 w-12" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              {getInstagramUsername(selectedLead) ? (
+                                <>
+                                  <p className="text-lg font-bold text-zinc-950">
+                                    @{getInstagramUsername(selectedLead)}
+                                  </p>
+                                  <a
+                                    href={
+                                      selectedLead.instagram ||
+                                      `https://instagram.com/${getInstagramUsername(selectedLead)}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                                  >
+                                    Profili Gör →
+                                  </a>
+                                  {selectedLead.business_name && (
+                                    <p className="mt-1 truncate text-sm text-zinc-500">
+                                      {selectedLead.business_name}
+                                    </p>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-lg font-bold text-zinc-950">
+                                    {selectedLead.business_name?.trim() ||
+                                      'İsimsiz işletme'}
+                                  </p>
+                                  <p className="text-sm text-zinc-500 italic">
+                                    Instagram hesabı yok
+                                  </p>
+                                </>
+                              )}
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="border-blue-200 bg-blue-50 text-blue-700"
+                                >
+                                  Aday
+                                </Badge>
+                                {selectedLead.status && (
+                                  <Badge
+                                    variant="outline"
+                                    className={leadStatusClass(
+                                      selectedLead.status
+                                    )}
+                                  >
+                                    {leadStatusLabel(selectedLead.status)}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
-              <div className="border-b border-zinc-200 p-4">
-                <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
-                  Contact Information
-                </h4>
-                <div className="space-y-3">
-                  <p
-                    className={`text-sm font-medium ${
-                      isUnknownLead(selectedLead)
-                        ? 'italic text-zinc-500'
-                        : 'text-zinc-950'
-                    }`}
-                  >
-                    {mode === 'customers'
-                      ? selectedCustomer?.name
-                      : selectedLead?.business_name?.trim() ||
-                        'İsimsiz işletme'}
-                  </p>
-                  {(mode === 'leads'
-                    ? selectedLead?.phone
-                    : selectedCustomer?.phone) && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-zinc-400" />
-                      <span className="text-sm text-zinc-950">
-                        {mode === 'leads'
-                          ? selectedLead?.phone
-                          : selectedCustomer?.phone}
-                      </span>
-                    </div>
-                  )}
-                  {mode === 'leads' && selectedLead?.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-zinc-400" />
-                      <span className="text-sm text-zinc-950">
-                        {selectedLead.email}
-                      </span>
-                    </div>
-                  )}
-                  {mode === 'leads' && selectedLead?.address && (
-                    <div className="flex items-start gap-2">
-                      <MapPin className="mt-0.5 h-4 w-4 text-zinc-400" />
-                      <span className="text-sm text-zinc-950">
-                        {selectedLead.address}
-                      </span>
-                    </div>
-                  )}
-                  {mode === 'leads' &&
-                    (selectedLead?.city || selectedLead?.district) && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-zinc-400" />
-                        <span className="text-sm text-zinc-950">
-                          {[selectedLead?.district, selectedLead?.city]
-                            .filter(Boolean)
-                            .join(', ')}
-                        </span>
-                      </div>
-                    )}
-                </div>
-              </div>
-
-              {mode === 'leads' && selectedLead?.rating != null && (
-                <div className="border-b border-zinc-200 p-4">
-                  <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                    Google Rating
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
-                    <span className="text-lg font-semibold text-zinc-950">
-                      {selectedLead.rating}
-                    </span>
-                    <span className="text-sm text-zinc-500">
-                      ({selectedLead.review_count ?? 0} yorum)
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {mode === 'leads' &&
-                selectedLead &&
-                (selectedLead.instagram_profile_pic_url ||
-                  selectedLead.instagram_followers != null ||
-                  selectedLead.instagram_post_count != null ||
-                  selectedLead.instagram_bio ||
-                  selectedLead.instagram_username ||
-                  selectedLead.instagram ||
-                  parsePhotoUrls(selectedLead.photo_urls).length > 0) && (
-                  <div className="border-b border-zinc-200 p-4">
-                    <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
-                      Instagram Detayları
-                    </h4>
-
-                    <div className="mb-3 flex items-center gap-3">
-                      {selectedLead.instagram_profile_pic_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={proxiedMediaUrl(
-                            selectedLead.instagram_profile_pic_url
+                          {(selectedLead.instagram_followers != null ||
+                            selectedLead.instagram_post_count != null) && (
+                            <div className="mb-4 grid grid-cols-3 gap-3">
+                              {selectedLead.instagram_followers != null && (
+                                <div className="rounded-xl border border-purple-200 bg-white p-3 shadow-sm">
+                                  <p className="mb-1 text-xs text-zinc-500">
+                                    Takipçi
+                                  </p>
+                                  <p className="text-xl font-bold text-zinc-950">
+                                    {Number(
+                                      selectedLead.instagram_followers
+                                    ).toLocaleString('tr-TR')}
+                                  </p>
+                                </div>
+                              )}
+                              {selectedLead.instagram_post_count != null && (
+                                <div className="rounded-xl border border-pink-200 bg-white p-3 shadow-sm">
+                                  <p className="mb-1 text-xs text-zinc-500">
+                                    Gönderi
+                                  </p>
+                                  <p className="text-xl font-bold text-zinc-950">
+                                    {Number(
+                                      selectedLead.instagram_post_count
+                                    ).toLocaleString('tr-TR')}
+                                  </p>
+                                </div>
+                              )}
+                              <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+                                <p className="mb-1 text-xs text-zinc-500">
+                                  Engagement
+                                </p>
+                                <p className="text-xl font-bold text-zinc-950">
+                                  {selectedLead.instagram_followers &&
+                                  selectedLead.instagram_followers > 0
+                                    ? (
+                                        ((selectedLead.instagram_post_count ||
+                                          0) /
+                                          selectedLead.instagram_followers) *
+                                        100
+                                      ).toFixed(1)
+                                    : '0'}
+                                  %
+                                </p>
+                              </div>
+                            </div>
                           )}
-                          alt="Profile"
-                          referrerPolicy="no-referrer"
-                          className="h-16 w-16 rounded-full border-2 border-emerald-200 object-cover"
-                          onError={(e) => {
-                            const el = e.currentTarget;
-                            el.style.display = 'none';
-                            const fallback = el.nextElementSibling;
-                            if (fallback instanceof HTMLElement) {
-                              fallback.classList.remove('hidden');
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white ${
-                          selectedLead.instagram_profile_pic_url
-                            ? 'hidden'
-                            : ''
-                        }`}
-                      >
-                        <Camera className="h-8 w-8" />
-                      </div>
-                      {getInstagramUsername(selectedLead) && (
+
+                          {selectedLead.instagram_bio && (
+                            <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4">
+                              <p className="mb-2 text-xs font-medium text-zinc-500">
+                                Biyografi
+                              </p>
+                              <p className="text-sm leading-relaxed text-zinc-950">
+                                {selectedLead.instagram_bio}
+                              </p>
+                            </div>
+                          )}
+
+                          {parsePhotoUrls(selectedLead.photo_urls).length >
+                            0 && (
+                            <div>
+                              <p className="mb-3 text-xs font-medium text-zinc-500">
+                                Son 6 Paylaşım
+                              </p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {parsePhotoUrls(selectedLead.photo_urls)
+                                  .slice(0, 6)
+                                  .map((photo, index) => (
+                                    <a
+                                      key={`${photo}-${index}`}
+                                      href={photo}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="aspect-square overflow-hidden rounded-lg border-2 border-zinc-200 bg-zinc-100 transition-all hover:border-emerald-400 hover:shadow-md"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={proxiedMediaUrl(photo)}
+                                        alt={`Post ${index + 1}`}
+                                        referrerPolicy="no-referrer"
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.opacity =
+                                            '0.25';
+                                        }}
+                                      />
+                                    </a>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedLead.rating != null && (
+                          <div className="border-b border-zinc-200 p-6">
+                            <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                              Google Değerlendirmesi
+                            </h4>
+                            <div className="flex items-center gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                              <div className="flex size-16 items-center justify-center rounded-full bg-white shadow-sm">
+                                <Star className="h-8 w-8 fill-amber-400 text-amber-400" />
+                              </div>
+                              <div>
+                                <p className="text-3xl font-bold text-zinc-950">
+                                  {selectedLead.rating}
+                                </p>
+                                <p className="text-sm text-zinc-500">
+                                  {selectedLead.review_count ?? 0} yorum
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="border-b border-zinc-200 p-6">
+                          <h4 className="mb-4 text-xs font-medium text-zinc-500 uppercase">
+                            İletişim Bilgileri
+                          </h4>
+                          <div className="space-y-3">
+                            {selectedLead.phone && (
+                              <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                                <Phone className="h-5 w-5 text-emerald-600" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-zinc-950">
+                                    {selectedLead.phone}
+                                  </p>
+                                  <p className="text-xs text-zinc-500">
+                                    Telefon
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {selectedLead.email && (
+                              <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                                <Mail className="h-5 w-5 text-emerald-600" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-zinc-950">
+                                    {selectedLead.email}
+                                  </p>
+                                  <p className="text-xs text-zinc-500">
+                                    E-posta
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {(selectedLead.address ||
+                              selectedLead.city ||
+                              selectedLead.district) && (
+                              <div className="flex items-start gap-3 rounded-lg bg-zinc-50 p-3">
+                                <MapPin className="mt-0.5 h-5 w-5 text-emerald-600" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-zinc-950">
+                                    {[
+                                      selectedLead.address,
+                                      selectedLead.district,
+                                      selectedLead.city,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(', ')}
+                                  </p>
+                                  <p className="text-xs text-zinc-500">
+                                    Adres
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {selectedLead.website && (
+                          <div className="border-b border-zinc-200 p-6">
+                            <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                              Website
+                            </h4>
+                            <a
+                              href={
+                                selectedLead.website.startsWith('http')
+                                  ? selectedLead.website
+                                  : `https://${selectedLead.website}`
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-colors hover:bg-blue-100"
+                            >
+                              <Globe className="h-5 w-5 shrink-0 text-blue-600" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-blue-900">
+                                  {selectedLead.website.replace(
+                                    /^https?:\/\//,
+                                    ''
+                                  )}
+                                </p>
+                                {selectedLead.website_type && (
+                                  <p className="text-xs text-blue-600">
+                                    {selectedLead.website_type}
+                                  </p>
+                                )}
+                              </div>
+                              <ExternalLink className="h-4 w-4 shrink-0 text-blue-600" />
+                            </a>
+                          </div>
+                        )}
+
+                        <div className="p-6">
+                          <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                            Notes
+                          </h4>
+                          <Textarea
+                            key={selectedLead.id}
+                            placeholder="Not ekleyin..."
+                            className="min-h-[80px] text-sm"
+                            defaultValue={selectedLead.notes || ''}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-4 p-6">
                         <div>
-                          <p className="text-sm font-semibold text-zinc-950">
-                            @{getInstagramUsername(selectedLead)}
+                          <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                            İletişim Bilgileri
+                          </h4>
+                          <p className="text-sm font-medium text-zinc-950">
+                            {selectedCustomer?.name}
                           </p>
-                          <a
-                            href={
-                              selectedLead.instagram ||
-                              `https://instagram.com/${getInstagramUsername(selectedLead)}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
-                          >
-                            Profili Gör →
-                          </a>
+                          {selectedCustomer?.phone && (
+                            <div className="mt-3 flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                              <Phone className="h-5 w-5 text-emerald-600" />
+                              <div>
+                                <p className="text-sm font-medium text-zinc-950">
+                                  {selectedCustomer.phone}
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                  Telefon
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-
-                    {(selectedLead.instagram_followers != null ||
-                      selectedLead.instagram_post_count != null) && (
-                      <div className="mb-3 grid grid-cols-2 gap-2">
-                        {selectedLead.instagram_followers != null && (
-                          <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-3">
-                            <p className="mb-1 text-xs text-zinc-500">
-                              Takipçi
-                            </p>
-                            <p className="text-lg font-bold text-zinc-950">
-                              {Number(
-                                selectedLead.instagram_followers
-                              ).toLocaleString('tr-TR')}
-                            </p>
-                          </div>
-                        )}
-                        {selectedLead.instagram_post_count != null && (
-                          <div className="rounded-lg border border-pink-200 bg-gradient-to-br from-pink-50 to-rose-50 p-3">
-                            <p className="mb-1 text-xs text-zinc-500">
-                              Gönderi
-                            </p>
-                            <p className="text-lg font-bold text-zinc-950">
-                              {Number(
-                                selectedLead.instagram_post_count
-                              ).toLocaleString('tr-TR')}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
-
-                    {selectedLead.instagram_bio && (
-                      <div className="mb-3 rounded-lg bg-zinc-50 p-3">
-                        <p className="mb-2 text-xs text-zinc-500">Biyografi</p>
-                        <p className="text-sm leading-relaxed text-zinc-950">
-                          {selectedLead.instagram_bio}
-                        </p>
-                      </div>
-                    )}
-
-                    {parsePhotoUrls(selectedLead.photo_urls).length > 0 && (
-                      <div>
-                        <p className="mb-2 text-xs text-zinc-500">
-                          Son Paylaşımlar
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {parsePhotoUrls(selectedLead.photo_urls)
-                            .slice(0, 6)
-                            .map((photo, index) => (
-                              <a
-                                key={`${photo}-${index}`}
-                                href={photo}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 transition-colors hover:border-emerald-300"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={proxiedMediaUrl(photo)}
-                                  alt={`Post ${index + 1}`}
-                                  referrerPolicy="no-referrer"
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.opacity = '0.25';
-                                  }}
-                                />
-                              </a>
-                            ))}
-                        </div>
-                        {parsePhotoUrls(selectedLead.photo_urls).length >
-                          6 && (
-                          <p className="mt-2 text-center text-xs text-zinc-500">
-                            +
-                            {parsePhotoUrls(selectedLead.photo_urls).length -
-                              6}{' '}
-                            daha
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-              {mode === 'leads' && selectedLead?.website && (
-                <div className="border-b border-zinc-200 p-4">
-                  <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                    Website
-                  </h4>
-                  <a
-                    href={
-                      selectedLead.website.startsWith('http')
-                        ? selectedLead.website
-                        : `https://${selectedLead.website}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-colors hover:bg-blue-100"
-                  >
-                    <Globe className="h-5 w-5 shrink-0 text-blue-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-blue-900">
-                        {selectedLead.website.replace(/^https?:\/\//, '')}
-                      </p>
-                      {selectedLead.website_type && (
-                        <p className="text-xs text-blue-600">
-                          {selectedLead.website_type}
-                        </p>
-                      )}
-                    </div>
-                    <ExternalLink className="h-4 w-4 shrink-0 text-blue-600" />
-                  </a>
-                </div>
-              )}
-
-              <div className="border-b border-zinc-200 p-4">
-                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                  Notes
-                </h4>
-                <Textarea
-                  key={
-                    selectedLead?.id || selectedCustomer?.id || 'notes'
-                  }
-                  placeholder="Not ekleyin..."
-                  className="min-h-[80px] text-sm"
-                  defaultValue={selectedLead?.notes || ''}
-                />
-              </div>
-
-              <div className="p-4">
-                <h4 className="mb-2 text-xs font-medium text-zinc-500 uppercase">
-                  Automations
-                </h4>
-                <div className="rounded-lg bg-zinc-50 p-3">
-                  <p className="text-sm font-medium text-zinc-950">
-                    AI Chatbot Automation
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">Aktif</p>
-                </div>
-              </div>
                   </div>
                 )}
               </div>
