@@ -10,7 +10,8 @@
     "enrich:ig": "tsx --env-file=.env.local src/scripts/enrich-instagram.ts",
     "enrich:photos": "tsx --env-file=.env.local src/scripts/enrich-instagram-photos.ts",
     "enrich:broken": "tsx --env-file=.env.local src/scripts/enrich-instagram-broken.ts",
-    "enrich:avatars": "tsx --env-file=.env.local src/scripts/enrich-all-avatars.ts"
+    "enrich:avatars": "tsx --env-file=.env.local src/scripts/enrich-all-avatars.ts",
+    "download:avatars": "tsx --env-file=.env.local src/scripts/download-avatars-to-storage.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
