@@ -5,35 +5,7 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from('leads')
-      .select(
-        `
-        id,
-        business_name,
-        name,
-        phone,
-        email,
-        address,
-        city,
-        district,
-        rating,
-        review_count,
-        status,
-        conversation_status,
-        instagram,
-        instagram_username,
-        instagram_followers,
-        instagram_post_count,
-        instagram_bio,
-        instagram_profile_pic_url,
-        photo_urls,
-        website,
-        website_type,
-        notes,
-        last_contact_at,
-        created_at,
-        updated_at
-      `
-      )
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(2000);
 
