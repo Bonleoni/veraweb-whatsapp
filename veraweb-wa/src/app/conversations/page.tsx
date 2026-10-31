@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -929,32 +929,43 @@ function ConversationsPageContent() {
                           : 'border-transparent hover:bg-zinc-50'
                       }`}
                     >
-                      <Avatar className="relative size-10 shrink-0">
+                      <div className="relative size-10 shrink-0">
                         {lead.instagram_profile_pic_url ? (
-                          <AvatarImage
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
                             src={proxiedMediaUrl(
                               lead.instagram_profile_pic_url
                             )}
                             alt={businessName}
                             referrerPolicy="no-referrer"
+                            className="size-full rounded-full border border-zinc-200 object-cover"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              img.style.display = 'none';
+                              const fallback = img.nextElementSibling;
+                              if (fallback instanceof HTMLElement) {
+                                fallback.classList.remove('hidden');
+                              }
+                            }}
                           />
                         ) : null}
-                        <AvatarFallback
-                          className={`text-xs font-semibold ${
+                        <div
+                          className={`flex size-full items-center justify-center rounded-full text-xs font-semibold ${
+                            lead.instagram_profile_pic_url ? 'hidden' : ''
+                          } ${
                             unknown
                               ? 'bg-zinc-200 text-zinc-600'
-                              : lead.instagram_username &&
-                                  !lead.instagram_profile_pic_url
+                              : lead.instagram_username
                                 ? 'bg-amber-400 text-white'
                                 : 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white'
                           }`}
                         >
                           {unknown ? '?' : initials(businessName)}
-                        </AvatarFallback>
+                        </div>
                         {lead.instagram_username && (
-                          <div className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white bg-gradient-to-r from-purple-500 to-pink-500" />
+                          <div className="absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full border-2 border-white bg-gradient-to-r from-purple-500 to-pink-500" />
                         )}
-                      </Avatar>
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p
                           className={`truncate text-sm font-medium ${
