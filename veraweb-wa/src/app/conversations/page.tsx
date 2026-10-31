@@ -101,31 +101,27 @@ function parsePhotoUrls(value: Lead['photo_urls']): string[] {
   return [];
 }
 
-/** Instagram CDN CORS/403 için kendi API proxy'miz */
-function getProxyImageUrl(url: string | null | undefined) {
+/** Instagram/Facebook CDN engellerini aşmak için weserv.nl proxy */
+function getSafeImageUrl(url: string | null | undefined, size = 128) {
   if (!url?.trim()) return null;
   const raw = url.trim();
-  if (
-    raw.startsWith('/api/proxy-instagram-image') ||
-    raw.startsWith('/api/media/proxy') ||
-    raw.startsWith('data:')
-  ) {
-    return raw;
-  }
-  // Supabase storage zaten same-origin/public
+  if (raw.startsWith('data:') || raw.includes('images.weserv.nl')) return raw;
+  // Supabase storage — proxy gerekmez
   if (raw.includes('supabase.co/storage')) return raw;
-  return `/api/proxy-instagram-image?url=${encodeURIComponent(raw)}`;
+  return `https://images.weserv.nl/?url=${encodeURIComponent(raw)}&w=${size}&h=${size}&fit=cover`;
 }
 
 /** Liste/detay avatar: YALNIZCA instagram_profile_pic_url */
-function leadProfilePicUrl(lead: {
-  instagram_profile_pic_url?: string | null;
-}) {
-  return getProxyImageUrl(lead.instagram_profile_pic_url) || '';
+function leadProfilePicUrl(
+  lead: { instagram_profile_pic_url?: string | null },
+  size = 128
+) {
+  return getSafeImageUrl(lead.instagram_profile_pic_url, size) || '';
 }
 
 function proxiedMediaUrl(url?: string | null) {
-  return getProxyImageUrl(url) || '';
+  // Son paylaşımlar için biraz daha büyük
+  return getSafeImageUrl(url, 320) || '';
 }
 
 function getInstagramUsername(lead: Lead): string | null {
@@ -954,9 +950,8 @@ function ConversationsPageContent() {
                         {leadProfilePicUrl(lead) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={leadProfilePicUrl(lead)}
+                            src={leadProfilePicUrl(lead)!}
                             alt={businessName}
-                            referrerPolicy="no-referrer"
                             className="size-full rounded-full border border-zinc-200 bg-zinc-100 object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -972,7 +967,7 @@ function ConversationsPageContent() {
                         ) : null}
                         <div
                           className={`avatar-fallback size-full items-center justify-center rounded-full text-xs font-semibold ${
-                            leadProfilePicUrl(lead) ? 'hidden' : 'flex'
+                            lead.instagram_profile_pic_url ? 'hidden' : 'flex'
                           } ${
                             unknown
                               ? 'bg-zinc-200 text-zinc-600'
@@ -1443,12 +1438,11 @@ function ConversationsPageContent() {
 
                         <div className="border-b border-zinc-200 bg-gradient-to-b from-purple-50/50 to-white p-6">
                           <div className="mb-4 flex items-center gap-4">
-                            {leadProfilePicUrl(selectedLead) ? (
+                            {leadProfilePicUrl(selectedLead, 256) ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={leadProfilePicUrl(selectedLead)}
+                                src={leadProfilePicUrl(selectedLead, 256)!}
                                 alt="Profile"
-                                referrerPolicy="no-referrer"
                                 className="h-24 w-24 rounded-full border-4 border-white bg-zinc-100 object-cover shadow-lg"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
@@ -1464,7 +1458,7 @@ function ConversationsPageContent() {
                             ) : null}
                             <div
                               className={`profile-avatar-fallback h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
-                                leadProfilePicUrl(selectedLead)
+                                selectedLead.instagram_profile_pic_url
                                   ? 'hidden'
                                   : 'flex'
                               }`}
