@@ -379,6 +379,10 @@ function ConversationsPageContent() {
     email: '',
     city: '',
   });
+  const [editInstagramUsername, setEditInstagramUsername] = useState('');
+  const [editInstagramPicUrl, setEditInstagramPicUrl] = useState('');
+  const [savingInstagram, setSavingInstagram] = useState(false);
+  const [savingInstagramPic, setSavingInstagramPic] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -442,6 +446,74 @@ function ConversationsPageContent() {
       toast.error('Kaydedilemedi');
     } finally {
       setSavingLead(false);
+    }
+  };
+
+  const handleSaveInstagram = async () => {
+    if (!selectedLead || !editInstagramUsername.trim()) return;
+
+    const cleanUsername = editInstagramUsername.replace(/^@+/, '').trim();
+    if (!cleanUsername) {
+      toast.error('Kullanıcı adı gerekli');
+      return;
+    }
+
+    setSavingInstagram(true);
+    try {
+      const res = await fetch(`/api/leads/${selectedLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instagram_username: cleanUsername }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || 'Güncellenemedi');
+        return;
+      }
+
+      const updated = data.data as Lead;
+      setSelectedLead(updated);
+      setLeads((prev) =>
+        prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
+      );
+      setEditInstagramUsername(cleanUsername);
+      toast.success(`Instagram güncellendi: @${cleanUsername}`);
+    } catch (error) {
+      console.error('Instagram güncelleme hatası:', error);
+      toast.error('Güncellenemedi');
+    } finally {
+      setSavingInstagram(false);
+    }
+  };
+
+  const handleSaveInstagramPic = async () => {
+    if (!selectedLead || !editInstagramPicUrl.trim()) return;
+
+    const picUrl = editInstagramPicUrl.trim();
+    setSavingInstagramPic(true);
+    try {
+      const res = await fetch(`/api/leads/${selectedLead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instagram_profile_pic_url: picUrl }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || 'Güncellenemedi');
+        return;
+      }
+
+      const updated = data.data as Lead;
+      setSelectedLead(updated);
+      setLeads((prev) =>
+        prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
+      );
+      toast.success('Profil fotoğrafı güncellendi');
+    } catch (error) {
+      console.error('Fotoğraf güncelleme hatası:', error);
+      toast.error('Güncellenemedi');
+    } finally {
+      setSavingInstagramPic(false);
     }
   };
 
@@ -741,6 +813,16 @@ function ConversationsPageContent() {
   }, [selectedLead, selectedCustomer]);
 
   useEffect(() => {
+    if (selectedLead) {
+      setEditInstagramUsername(getInstagramUsername(selectedLead) || '');
+      setEditInstagramPicUrl(selectedLead.instagram_profile_pic_url || '');
+    } else {
+      setEditInstagramUsername('');
+      setEditInstagramPicUrl('');
+    }
+  }, [selectedLead]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -784,26 +866,49 @@ function ConversationsPageContent() {
 
   const filteredLeads = useMemo(() => {
     const q = leadSearchQuery.trim().toLowerCase();
-    return leads.filter((lead) => {
-      if (conversationFilter === 'open') {
-        if (
-          lead.conversation_status !== 'open' &&
-          Boolean(lead.conversation_status)
-        ) {
-          return false;
-        }
-      } else if (conversationFilter === 'snoozed') {
-        if (lead.conversation_status !== 'snoozed') return false;
-      } else if (conversationFilter === 'done') {
-        if (lead.conversation_status !== 'done') return false;
-      }
+    const statusOrder: Record<string, number> = {
+      open: 0,
+      snoozed: 1,
+      done: 2,
+    };
 
-      if (!q) return true;
-      const name = lead.business_name?.toLowerCase() ?? '';
-      const contact = lead.name?.toLowerCase() ?? '';
-      const phone = lead.phone?.toLowerCase() ?? '';
-      return name.includes(q) || contact.includes(q) || phone.includes(q);
-    });
+    return leads
+      .filter((lead) => {
+        if (conversationFilter === 'open') {
+          if (
+            lead.conversation_status !== 'open' &&
+            Boolean(lead.conversation_status)
+          ) {
+            return false;
+          }
+        } else if (conversationFilter === 'snoozed') {
+          if (lead.conversation_status !== 'snoozed') return false;
+        } else if (conversationFilter === 'done') {
+          if (lead.conversation_status !== 'done') return false;
+        }
+
+        if (!q) return true;
+        const name = lead.business_name?.toLowerCase() ?? '';
+        const contact = lead.name?.toLowerCase() ?? '';
+        const phone = lead.phone?.toLowerCase() ?? '';
+        const ig = getInstagramUsername(lead)?.toLowerCase() ?? '';
+        return (
+          name.includes(q) ||
+          contact.includes(q) ||
+          phone.includes(q) ||
+          ig.includes(q)
+        );
+      })
+      .sort((a, b) => {
+        // Instagram bilgisi olmayanlar en üstte
+        const aHasIg = getInstagramUsername(a) ? 1 : 0;
+        const bHasIg = getInstagramUsername(b) ? 1 : 0;
+        if (aHasIg !== bHasIg) return aHasIg - bHasIg;
+
+        const aStatus = statusOrder[a.conversation_status || 'open'] ?? 0;
+        const bStatus = statusOrder[b.conversation_status || 'open'] ?? 0;
+        return aStatus - bStatus;
+      });
   }, [leads, leadSearchQuery, conversationFilter]);
 
   const activeChat = selectedCustomer || selectedLead;
@@ -1618,6 +1723,106 @@ function ConversationsPageContent() {
                               </div>
                             </div>
                           )}
+                        </div>
+
+                        <div className="border-b border-zinc-200 p-4">
+                          <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
+                            Instagram
+                          </h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="mb-1 block text-xs text-zinc-500">
+                                Kullanıcı Adı
+                              </label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={editInstagramUsername}
+                                  onChange={(e) =>
+                                    setEditInstagramUsername(e.target.value)
+                                  }
+                                  placeholder="@kullanici_adi"
+                                  className="text-sm"
+                                />
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={handleSaveInstagram}
+                                  disabled={
+                                    savingInstagram ||
+                                    !editInstagramUsername.trim() ||
+                                    editInstagramUsername
+                                      .replace(/^@+/, '')
+                                      .trim() ===
+                                      (getInstagramUsername(selectedLead) ||
+                                        '')
+                                  }
+                                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                >
+                                  {savingInstagram ? '...' : 'Kaydet'}
+                                </Button>
+                              </div>
+                              {getInstagramUsername(selectedLead) && (
+                                <p className="mt-1 text-xs text-zinc-400">
+                                  Mevcut: @
+                                  {getInstagramUsername(selectedLead)}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-xs text-zinc-500">
+                                Profil Fotoğrafı URL (Opsiyonel)
+                              </label>
+                              <Input
+                                value={editInstagramPicUrl}
+                                onChange={(e) =>
+                                  setEditInstagramPicUrl(e.target.value)
+                                }
+                                placeholder="https://..."
+                                className="text-sm"
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSaveInstagramPic}
+                                disabled={
+                                  savingInstagramPic ||
+                                  !editInstagramPicUrl.trim() ||
+                                  editInstagramPicUrl.trim() ===
+                                    (selectedLead.instagram_profile_pic_url ||
+                                      '')
+                                }
+                                className="mt-2 w-full"
+                              >
+                                {savingInstagramPic
+                                  ? 'Kaydediliyor...'
+                                  : "Fotoğraf URL'sini Güncelle"}
+                              </Button>
+                            </div>
+
+                            {selectedLead.instagram_profile_pic_url && (
+                              <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={
+                                    getSafeImageUrl(
+                                      selectedLead.instagram_profile_pic_url
+                                    ) || ''
+                                  }
+                                  alt="Mevcut"
+                                  className="size-12 rounded-full object-cover"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs text-zinc-500">
+                                    Mevcut Fotoğraf
+                                  </p>
+                                  <p className="truncate text-xs text-zinc-400">
+                                    {selectedLead.instagram_profile_pic_url}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {selectedLead.rating != null && (
