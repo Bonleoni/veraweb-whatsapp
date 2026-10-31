@@ -3,22 +3,40 @@
  * Çalıştır: npm run download:avatars
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const BUCKET = 'avatars'
 const MAX_LEADS = 1500
 const DELAY_MS = 300
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+function createSupabase(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!url || !key) {
+    console.error(
+      '❌ NEXT_PUBLIC_SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY (veya ANON) gerekli (.env.local).'
+    )
+    process.exit(1)
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn(
+      '⚠️ SUPABASE_SERVICE_ROLE_KEY yok; ANON key kullanılıyor. Storage/RLS engellerse service role ekle.'
+    )
+  }
+
+  return createClient(url, key)
+}
 
 function isAlreadyStored(url: string | null | undefined) {
   if (!url?.trim()) return true
   return url.includes('supabase.co/storage')
 }
 
-async function ensureBucket() {
+async function ensureBucket(supabase: SupabaseClient) {
   const { data: buckets, error } = await supabase.storage.listBuckets()
   if (error) {
     console.error('❌ Bucket listesi alınamadı:', error.message)
@@ -50,16 +68,11 @@ async function ensureBucket() {
 }
 
 async function downloadAvatarsToStorage() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.error(
-      '❌ NEXT_PUBLIC_SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY gerekli (.env.local).'
-    )
-    process.exit(1)
-  }
+  const supabase = createSupabase()
 
   console.log("🔍 Instagram avatar URL'si olan lead'ler çekiliyor...")
 
-  const ok = await ensureBucket()
+  const ok = await ensureBucket(supabase)
   if (!ok) return
 
   const { data: leads, error: fetchError } = await supabase
