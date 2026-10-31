@@ -85,10 +85,18 @@ async function fetchLeadsWithoutPhoto(
     from += PAGE_SIZE
   }
 
-  return leads
+  const filtered = leads
     .filter((l) => !isJunkUsername(normalizeUsername(l.instagram_username)))
     .filter((l) => !(l.instagram_profile_pic_url || '').trim())
-    .slice(0, MAX_LEADS)
+
+  // Aynı username birden fazla lead'de olabilir — Apify duplicate URL reddeder
+  const uniqueByUser = new Map<string, LeadRow>()
+  for (const lead of filtered) {
+    const username = normalizeUsername(lead.instagram_username)
+    if (!uniqueByUser.has(username)) uniqueByUser.set(username, lead)
+  }
+
+  return [...uniqueByUser.values()].slice(0, MAX_LEADS)
 }
 
 async function enrichAllAvatars() {
@@ -192,10 +200,12 @@ async function enrichAllAvatars() {
         continue
       }
 
+      // Aynı username'e sahip tüm lead satırlarını güncelle
       const { error: updateError } = await supabase
         .from('leads')
         .update({ instagram_profile_pic_url: pic })
-        .eq('id', lead.id)
+        .ilike('instagram_username', username)
+        .or('instagram_profile_pic_url.is.null,instagram_profile_pic_url.eq.')
 
       if (updateError) {
         console.error(`❌ Güncelleme hatası (${username}):`, updateError.message)
