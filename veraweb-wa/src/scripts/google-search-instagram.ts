@@ -34,6 +34,10 @@ const INVALID_USERNAMES = new Set([
   'web',
   'directory',
   'nametag',
+  'popular',
+  'tags',
+  'locations',
+  'share',
 ])
 
 type LeadRow = {
@@ -45,6 +49,7 @@ type LeadRow = {
 
 type OrganicResult = {
   url?: string
+  displayedUrl?: string
   title?: string
   description?: string
 }
@@ -90,18 +95,53 @@ function getItemQuery(item: SearchItem): string {
   return ''
 }
 
+function isValidUsername(username: string) {
+  return Boolean(username) && !INVALID_USERNAMES.has(username) && username.length >= 2
+}
+
 function extractUsernameFromUrl(url: string): string | null {
-  const match = url.match(/instagram\.com\/([A-Za-z0-9._]+)/i)
+  // Sadece profil URL'leri: /username veya /username/
+  // /reel/, /p/, /popular/... reddedilir
+  const match = url.match(
+    /instagram\.com\/([A-Za-z0-9._]+)\/?(?:[?#]|$)/i
+  )
   if (!match) return null
   const username = normalizeUsername(match[1])
-  if (!username || INVALID_USERNAMES.has(username)) return null
-  return username
+  return isValidUsername(username) ? username : null
+}
+
+function extractUsernameFromText(text: string): string | null {
+  // Başlıkta "@username" veya "instagram.com/username"
+  const at = text.match(/@([A-Za-z0-9._]{2,30})\b/)
+  if (at) {
+    const username = normalizeUsername(at[1])
+    if (isValidUsername(username)) return username
+  }
+  const urlish = text.match(/instagram\.com\/([A-Za-z0-9._]{2,30})/i)
+  if (urlish) {
+    const username = normalizeUsername(urlish[1])
+    if (isValidUsername(username)) return username
+  }
+  return null
 }
 
 function pickUsername(results: OrganicResult[]): string | null {
+  // 1) Temiz profil URL'leri
   for (const result of results.slice(0, MAX_RESULTS_TO_CHECK)) {
-    const username = extractUsernameFromUrl(result.url || '')
-    if (username) return username
+    const fromUrl = extractUsernameFromUrl(result.url || '')
+    if (fromUrl) return fromUrl
+  }
+  // 2) displayedUrl içinde profil
+  for (const result of results.slice(0, MAX_RESULTS_TO_CHECK)) {
+    const fromDisplayed = extractUsernameFromUrl(result.displayedUrl || '')
+    if (fromDisplayed) return fromDisplayed
+  }
+  // 3) Title / description içindeki @handle (reel/post sonuçları için)
+  for (const result of results.slice(0, MAX_RESULTS_TO_CHECK)) {
+    const fromTitle = extractUsernameFromText(
+      `${result.title || ''} ${result.description || ''}`
+    )
+    if (fromTitle) return fromTitle
   }
   return null
 }
@@ -153,11 +193,9 @@ async function googleSearchForInstagram() {
     return
   }
 
-  const queryByLeadId = new Map<string, string>()
   const leadByQuery = new Map<string, LeadRow>()
   const searchQueries = leads.map((lead) => {
     const q = buildQuery(lead)
-    queryByLeadId.set(lead.id, q)
     leadByQuery.set(q.toLowerCase(), lead)
     return q
   })
@@ -266,8 +304,6 @@ async function googleSearchForInstagram() {
   console.log(
     '\n💡 Sonraki adım: npm run fetch:missing-avatars && npm run download:avatars'
   )
-
-  void queryByLeadId
 }
 
 googleSearchForInstagram().catch((err) => {
