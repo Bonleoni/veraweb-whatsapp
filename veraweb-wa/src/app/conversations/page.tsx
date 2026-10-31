@@ -101,14 +101,19 @@ function parsePhotoUrls(value: Lead['photo_urls']): string[] {
   return [];
 }
 
-/** Instagram/Facebook CDN engellerini aşmak için weserv.nl proxy */
-function getSafeImageUrl(url: string | null | undefined, size = 128) {
+/**
+ * Instagram/Facebook CDN hotlink korumasını aşar.
+ * Öncelik: kendi API proxy'miz (Referer + UA ile çeker).
+ * Supabase Storage URL'leri olduğu gibi geçer.
+ */
+function getSafeImageUrl(url: string | null | undefined, _size = 128) {
   if (!url?.trim()) return null;
   const raw = url.trim();
-  if (raw.startsWith('data:') || raw.includes('images.weserv.nl')) return raw;
-  // Supabase storage — proxy gerekmez
+  if (raw.startsWith('data:')) return raw;
   if (raw.includes('supabase.co/storage')) return raw;
-  return `https://images.weserv.nl/?url=${encodeURIComponent(raw)}&w=${size}&h=${size}&fit=cover`;
+  // Zaten proxy üzerinden geliyorsa tekrar sarmalama
+  if (raw.includes('/api/proxy-instagram-image')) return raw;
+  return `/api/proxy-instagram-image?url=${encodeURIComponent(raw)}`;
 }
 
 /** Liste/detay avatar: YALNIZCA instagram_profile_pic_url */
@@ -952,7 +957,7 @@ function ConversationsPageContent() {
                           <img
                             src={leadProfilePicUrl(lead)!}
                             alt={businessName}
-                            className="size-full rounded-full border border-zinc-200 bg-zinc-100 object-cover"
+                            className="absolute inset-0 size-full rounded-full border border-zinc-300 bg-white object-cover shadow-sm"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               const fallback =
@@ -966,7 +971,7 @@ function ConversationsPageContent() {
                           />
                         ) : null}
                         <div
-                          className={`avatar-fallback size-full items-center justify-center rounded-full text-xs font-semibold ${
+                          className={`avatar-fallback absolute inset-0 size-full items-center justify-center rounded-full text-xs font-semibold ${
                             lead.instagram_profile_pic_url ? 'hidden' : 'flex'
                           } ${
                             unknown
@@ -979,7 +984,7 @@ function ConversationsPageContent() {
                           {unknown ? '?' : initials(businessName)}
                         </div>
                         {lead.instagram_username && (
-                          <div className="absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full border-2 border-white bg-gradient-to-r from-purple-500 to-pink-500" />
+                          <div className="absolute -right-0.5 -bottom-0.5 z-10 size-3.5 rounded-full border-2 border-white bg-gradient-to-r from-purple-500 to-pink-500" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1438,32 +1443,34 @@ function ConversationsPageContent() {
 
                         <div className="border-b border-zinc-200 bg-gradient-to-b from-purple-50/50 to-white p-6">
                           <div className="mb-4 flex items-center gap-4">
-                            {leadProfilePicUrl(selectedLead, 256) ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={leadProfilePicUrl(selectedLead, 256)!}
-                                alt="Profile"
-                                className="h-24 w-24 rounded-full border-4 border-white bg-zinc-100 object-cover shadow-lg"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const fallback =
-                                    e.currentTarget.parentElement?.querySelector(
-                                      '.profile-avatar-fallback'
-                                    );
-                                  if (fallback instanceof HTMLElement) {
-                                    fallback.style.display = 'flex';
-                                  }
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className={`profile-avatar-fallback h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
-                                selectedLead.instagram_profile_pic_url
-                                  ? 'hidden'
-                                  : 'flex'
-                              }`}
-                            >
-                              <Camera className="h-12 w-12" />
+                            <div className="relative h-24 w-24 shrink-0">
+                              {leadProfilePicUrl(selectedLead, 256) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={leadProfilePicUrl(selectedLead, 256)!}
+                                  alt="Profile"
+                                  className="absolute inset-0 h-24 w-24 rounded-full border-4 border-white bg-white object-cover shadow-lg ring-1 ring-zinc-200"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback =
+                                      e.currentTarget.parentElement?.querySelector(
+                                        '.profile-avatar-fallback'
+                                      );
+                                    if (fallback instanceof HTMLElement) {
+                                      fallback.style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className={`profile-avatar-fallback absolute inset-0 h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
+                                  selectedLead.instagram_profile_pic_url
+                                    ? 'hidden'
+                                    : 'flex'
+                                }`}
+                              >
+                                <Camera className="h-12 w-12" />
+                              </div>
                             </div>
                             <div className="min-w-0 flex-1">
                               {getInstagramUsername(selectedLead) ? (
