@@ -207,6 +207,7 @@ async function scrapeGoogleMapsForInstagram() {
       searchStringsArray,
       maxCrawledPlacesPerSearch: 1,
       language: 'tr',
+      countryCode: 'tr',
       skipClosedPlaces: false,
       scrapeContacts: true, // website'den social/instagram linkleri
       scrapeSocialMediaProfiles: {
