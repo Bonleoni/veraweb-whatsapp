@@ -116,16 +116,12 @@ function proxiedMediaUrl(url?: string | null) {
   return `/api/media/proxy?url=${encodeURIComponent(url)}`;
 }
 
-/** Liste/detay için avatar: IG profil > işletme photo_url */
-function leadAvatarUrl(lead: {
+/** Liste/detay avatar: YALNIZCA instagram_profile_pic_url (photo_url / photo_urls ASLA) */
+function leadProfilePicUrl(lead: {
   instagram_profile_pic_url?: string | null;
-  photo_url?: string | null;
 }) {
   const ig = lead.instagram_profile_pic_url?.trim();
-  if (ig) return proxiedMediaUrl(ig);
-  const photo = lead.photo_url?.trim();
-  if (photo) return proxiedMediaUrl(photo);
-  return '';
+  return ig ? proxiedMediaUrl(ig) : '';
 }
 
 function getInstagramUsername(lead: Lead): string | null {
@@ -951,37 +947,28 @@ function ConversationsPageContent() {
                       }`}
                     >
                       <div className="relative size-10 shrink-0">
-                        {leadAvatarUrl(lead) ? (
+                        {leadProfilePicUrl(lead) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={leadAvatarUrl(lead)}
+                            src={leadProfilePicUrl(lead)}
                             alt={businessName}
                             referrerPolicy="no-referrer"
-                            className="size-full rounded-full border border-zinc-200 object-cover"
+                            className="size-full rounded-full border border-zinc-200 bg-zinc-100 object-cover"
                             onError={(e) => {
-                              const img = e.currentTarget;
-                              // IG bozulursa photo_url dene
-                              const fallbackPhoto = lead.photo_url?.trim();
-                              const current = img.getAttribute('src') || '';
-                              if (
-                                fallbackPhoto &&
-                                lead.instagram_profile_pic_url &&
-                                current.includes('media/proxy')
-                              ) {
-                                img.src = proxiedMediaUrl(fallbackPhoto);
-                                return;
-                              }
-                              img.style.display = 'none';
-                              const fallback = img.nextElementSibling;
+                              e.currentTarget.style.display = 'none';
+                              const fallback =
+                                e.currentTarget.parentElement?.querySelector(
+                                  '.avatar-fallback'
+                                );
                               if (fallback instanceof HTMLElement) {
-                                fallback.classList.remove('hidden');
+                                fallback.style.display = 'flex';
                               }
                             }}
                           />
                         ) : null}
                         <div
-                          className={`flex size-full items-center justify-center rounded-full text-xs font-semibold ${
-                            leadAvatarUrl(lead) ? 'hidden' : ''
+                          className={`avatar-fallback size-full items-center justify-center rounded-full text-xs font-semibold ${
+                            leadProfilePicUrl(lead) ? 'hidden' : 'flex'
                           } ${
                             unknown
                               ? 'bg-zinc-200 text-zinc-600'
@@ -1452,37 +1439,30 @@ function ConversationsPageContent() {
 
                         <div className="border-b border-zinc-200 bg-gradient-to-b from-purple-50/50 to-white p-6">
                           <div className="mb-4 flex items-center gap-4">
-                            {leadAvatarUrl(selectedLead) ? (
+                            {leadProfilePicUrl(selectedLead) ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={leadAvatarUrl(selectedLead)}
+                                src={leadProfilePicUrl(selectedLead)}
                                 alt="Profile"
                                 referrerPolicy="no-referrer"
-                                className="h-24 w-24 rounded-full border-4 border-white object-cover shadow-lg"
+                                className="h-24 w-24 rounded-full border-4 border-white bg-zinc-100 object-cover shadow-lg"
                                 onError={(e) => {
-                                  const img = e.currentTarget;
-                                  const fallbackPhoto =
-                                    selectedLead.photo_url?.trim();
-                                  const current = img.getAttribute('src') || '';
-                                  if (
-                                    fallbackPhoto &&
-                                    selectedLead.instagram_profile_pic_url &&
-                                    current.includes('media/proxy')
-                                  ) {
-                                    img.src = proxiedMediaUrl(fallbackPhoto);
-                                    return;
-                                  }
-                                  img.style.display = 'none';
-                                  const fallback = img.nextElementSibling;
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback =
+                                    e.currentTarget.parentElement?.querySelector(
+                                      '.profile-avatar-fallback'
+                                    );
                                   if (fallback instanceof HTMLElement) {
-                                    fallback.classList.remove('hidden');
+                                    fallback.style.display = 'flex';
                                   }
                                 }}
                               />
                             ) : null}
                             <div
-                              className={`flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
-                                leadAvatarUrl(selectedLead) ? 'hidden' : ''
+                              className={`profile-avatar-fallback h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
+                                leadProfilePicUrl(selectedLead)
+                                  ? 'hidden'
+                                  : 'flex'
                               }`}
                             >
                               <Camera className="h-12 w-12" />
