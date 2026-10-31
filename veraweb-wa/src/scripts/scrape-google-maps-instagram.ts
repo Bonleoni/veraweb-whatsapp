@@ -259,10 +259,7 @@ async function scrapeGoogleMapsForInstagram() {
 
     const { error: updateError } = await supabase
       .from('leads')
-      .update({
-        instagram_username: instagramUsername,
-        instagram: `https://www.instagram.com/${instagramUsername}/`,
-      })
+      .update({ instagram_username: instagramUsername })
       .eq('id', lead.id)
       .or('instagram_username.is.null,instagram_username.eq.')
 
