@@ -177,99 +177,108 @@ async function enrichInstagramData() {
       `https://www.instagram.com/${normalizeUsername(lead.instagram_username)}/`
   )
 
-  console.log('🚀 Apify Instagram Scraper başlatılıyor...')
+  const aggregates = new Map<string, ProfileAgg>()
+
+  console.log('👤 Apify profil detayları çekiliyor (resultsType=details)...')
   console.log(`   Actor: apify/instagram-scraper | URL: ${urls.length}`)
 
-  const run = await apifyClient.actor('apify/instagram-scraper').call(
+  const detailsRun = await apifyClient.actor('apify/instagram-scraper').call(
     {
       directUrls: urls,
-      resultsType: 'posts',
-      resultsLimit: POSTS_LIMIT,
-      searchLimit: POSTS_LIMIT,
-      addParentData: true,
+      resultsType: 'details',
+      resultsLimit: 1,
     },
     { waitSecs: 60 * 15 }
   )
 
-  if (!run?.defaultDatasetId) {
-    console.error('❌ Apify dataset ID alınamadı:', run)
+  if (!detailsRun?.defaultDatasetId) {
+    console.error('❌ Apify dataset ID alınamadı:', detailsRun)
     process.exit(1)
   }
 
-  console.log(`⏳ Dataset okunuyor: ${run.defaultDatasetId}`)
-  const { items } = await apifyClient
-    .dataset(run.defaultDatasetId)
+  console.log(`⏳ Details dataset: ${detailsRun.defaultDatasetId}`)
+  const { items: detailItems } = await apifyClient
+    .dataset(detailsRun.defaultDatasetId)
     .listItems({ limit: 10_000 })
 
-  console.log(`📦 Apify'dan ${items.length} kayıt geldi, eşleştiriliyor...`)
+  console.log(`📦 Details: ${detailItems.length} kayıt`)
 
-  const aggregates = new Map<string, ProfileAgg>()
-
-  for (const raw of items as ScrapedItem[]) {
-    const username = normalizeUsername(
-      raw.ownerUsername || raw.username || usernameFromUrl((raw as { url?: string }).url)
-    )
+  for (const raw of detailItems as ScrapedItem[]) {
+    const username = normalizeUsername(raw.username || raw.ownerUsername)
     if (!username || !leadByUsername.has(username)) continue
 
-    const agg = aggregates.get(username) || { photos: [] }
-
-    agg.followers = firstNumber(
-      agg.followers,
-      raw.ownerFollowersCount,
-      raw.followersCount
-    )
-    agg.posts = firstNumber(agg.posts, raw.ownerPostsCount, raw.postsCount)
-    agg.bio = firstString(agg.bio, raw.ownerBiography, raw.biography)
-    agg.profilePic = firstString(
-      agg.profilePic,
-      raw.ownerProfilePicUrl,
-      raw.profilePicUrlHD,
-      raw.profilePicUrl
-    )
-
-    for (const photo of collectPhotos(raw)) {
-      if (!agg.photos.includes(photo) && agg.photos.length < POSTS_LIMIT) {
-        agg.photos.push(photo)
-      }
-    }
-
-    aggregates.set(username, agg)
+    aggregates.set(username, {
+      followers: firstNumber(raw.followersCount, raw.ownerFollowersCount),
+      posts: firstNumber(raw.postsCount, raw.ownerPostsCount),
+      bio: firstString(raw.biography, raw.ownerBiography),
+      profilePic: firstString(
+        raw.profilePicUrlHD,
+        raw.profilePicUrl,
+        raw.ownerProfilePicUrl
+      ),
+      photos: collectPhotos(raw).slice(0, POSTS_LIMIT),
+    })
   }
 
-  if (aggregates.size === 0) {
-    console.warn(
-      '⚠️ Hiçbir Apify sonucu lead ile eşleşmedi. resultsType=details deneniyor...'
+  const needsPhotos = [...leadByUsername.keys()].filter((username) => {
+    const agg = aggregates.get(username)
+    return !agg || agg.photos.length === 0
+  })
+
+  if (needsPhotos.length > 0) {
+    console.log(
+      `🖼️  Fotoğraf eksik ${needsPhotos.length} hesap için posts çekiliyor...`
+    )
+    const photoUrls = needsPhotos.map(
+      (username) => `https://www.instagram.com/${username}/`
     )
 
-    const detailsRun = await apifyClient.actor('apify/instagram-scraper').call(
+    const postsRun = await apifyClient.actor('apify/instagram-scraper').call(
       {
-        directUrls: urls,
-        resultsType: 'details',
-        resultsLimit: 1,
+        directUrls: photoUrls,
+        resultsType: 'posts',
+        resultsLimit: POSTS_LIMIT,
+        searchLimit: POSTS_LIMIT,
+        addParentData: true,
       },
       { waitSecs: 60 * 15 }
     )
 
-    if (detailsRun?.defaultDatasetId) {
-      const { items: detailItems } = await apifyClient
-        .dataset(detailsRun.defaultDatasetId)
+    if (postsRun?.defaultDatasetId) {
+      const { items: postItems } = await apifyClient
+        .dataset(postsRun.defaultDatasetId)
         .listItems({ limit: 10_000 })
 
-      for (const raw of detailItems as ScrapedItem[]) {
-        const username = normalizeUsername(raw.username || raw.ownerUsername)
+      console.log(`📦 Posts: ${postItems.length} kayıt`)
+
+      for (const raw of postItems as ScrapedItem[]) {
+        const username = normalizeUsername(
+          raw.ownerUsername ||
+            raw.username ||
+            usernameFromUrl((raw as { url?: string }).url)
+        )
         if (!username || !leadByUsername.has(username)) continue
 
-        aggregates.set(username, {
-          followers: firstNumber(raw.followersCount, raw.ownerFollowersCount),
-          posts: firstNumber(raw.postsCount, raw.ownerPostsCount),
-          bio: firstString(raw.biography, raw.ownerBiography),
-          profilePic: firstString(
-            raw.profilePicUrlHD,
-            raw.profilePicUrl,
-            raw.ownerProfilePicUrl
-          ),
-          photos: collectPhotos(raw).slice(0, POSTS_LIMIT),
-        })
+        const agg = aggregates.get(username) || { photos: [] }
+        agg.followers = firstNumber(
+          agg.followers,
+          raw.ownerFollowersCount,
+          raw.followersCount
+        )
+        agg.posts = firstNumber(agg.posts, raw.ownerPostsCount, raw.postsCount)
+        agg.bio = firstString(agg.bio, raw.ownerBiography, raw.biography)
+        agg.profilePic = firstString(
+          agg.profilePic,
+          raw.ownerProfilePicUrl,
+          raw.profilePicUrlHD,
+          raw.profilePicUrl
+        )
+        for (const photo of collectPhotos(raw)) {
+          if (!agg.photos.includes(photo) && agg.photos.length < POSTS_LIMIT) {
+            agg.photos.push(photo)
+          }
+        }
+        aggregates.set(username, agg)
       }
     }
   }

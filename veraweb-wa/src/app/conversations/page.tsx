@@ -31,9 +31,9 @@ import {
   Video,
   Zap,
   ExternalLink,
-  Camera,
   AlertCircle,
   Edit,
+  Instagram,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -1485,12 +1485,13 @@ function ConversationsPageContent() {
 
               {mode === 'leads' &&
                 selectedLead &&
-                (selectedLead.instagram_followers != null ||
+                (selectedLead.instagram_profile_pic_url ||
+                  selectedLead.instagram_followers != null ||
                   selectedLead.instagram_post_count != null ||
                   selectedLead.instagram_bio ||
-                  selectedLead.instagram_profile_pic_url ||
                   selectedLead.instagram_username ||
-                  selectedLead.instagram) && (
+                  selectedLead.instagram ||
+                  parsePhotoUrls(selectedLead.photo_urls).length > 0) && (
                   <div className="border-b border-zinc-200 p-4">
                     <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
                       Instagram Detayları
@@ -1502,16 +1503,16 @@ function ConversationsPageContent() {
                         <img
                           src={selectedLead.instagram_profile_pic_url}
                           alt="Profile"
-                          className="h-12 w-12 rounded-full border-2 border-zinc-200 object-cover"
+                          className="h-16 w-16 rounded-full border-2 border-emerald-200 object-cover"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                          <Camera className="h-6 w-6" />
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
+                          <Instagram className="h-8 w-8" />
                         </div>
                       )}
                       {getInstagramUsername(selectedLead) && (
                         <div>
-                          <p className="text-sm font-medium text-zinc-950">
+                          <p className="text-sm font-semibold text-zinc-950">
                             @{getInstagramUsername(selectedLead)}
                           </p>
                           <a
@@ -1521,9 +1522,9 @@ function ConversationsPageContent() {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline"
+                            className="text-xs text-emerald-600 hover:text-emerald-700 hover:underline"
                           >
-                            Profili Gör
+                            Profili Gör →
                           </a>
                         </div>
                       )}
@@ -1533,9 +1534,11 @@ function ConversationsPageContent() {
                       selectedLead.instagram_post_count != null) && (
                       <div className="mb-3 grid grid-cols-2 gap-2">
                         {selectedLead.instagram_followers != null && (
-                          <div className="rounded-lg border border-purple-200 bg-purple-50 p-2">
-                            <p className="text-xs text-zinc-500">Takipçi</p>
-                            <p className="text-sm font-semibold text-zinc-950">
+                          <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-3">
+                            <p className="mb-1 text-xs text-zinc-500">
+                              Takipçi
+                            </p>
+                            <p className="text-lg font-bold text-zinc-950">
                               {Number(
                                 selectedLead.instagram_followers
                               ).toLocaleString('tr-TR')}
@@ -1543,10 +1546,14 @@ function ConversationsPageContent() {
                           </div>
                         )}
                         {selectedLead.instagram_post_count != null && (
-                          <div className="rounded-lg border border-pink-200 bg-pink-50 p-2">
-                            <p className="text-xs text-zinc-500">Gönderi</p>
-                            <p className="text-sm font-semibold text-zinc-950">
-                              {selectedLead.instagram_post_count}
+                          <div className="rounded-lg border border-pink-200 bg-gradient-to-br from-pink-50 to-rose-50 p-3">
+                            <p className="mb-1 text-xs text-zinc-500">
+                              Gönderi
+                            </p>
+                            <p className="text-lg font-bold text-zinc-950">
+                              {Number(
+                                selectedLead.instagram_post_count
+                              ).toLocaleString('tr-TR')}
                             </p>
                           </div>
                         )}
@@ -1554,48 +1561,49 @@ function ConversationsPageContent() {
                     )}
 
                     {selectedLead.instagram_bio && (
-                      <div className="rounded-lg bg-zinc-50 p-3">
-                        <p className="mb-1 text-xs text-zinc-500">Biyografi</p>
-                        <p className="text-sm text-zinc-950">
+                      <div className="mb-3 rounded-lg bg-zinc-50 p-3">
+                        <p className="mb-2 text-xs text-zinc-500">Biyografi</p>
+                        <p className="text-sm leading-relaxed text-zinc-950">
                           {selectedLead.instagram_bio}
                         </p>
                       </div>
                     )}
-                  </div>
-                )}
 
-              {mode === 'leads' &&
-                selectedLead &&
-                parsePhotoUrls(selectedLead.photo_urls).length > 0 && (
-                  <div className="border-b border-zinc-200 p-4">
-                    <h4 className="mb-3 text-xs font-medium text-zinc-500 uppercase">
-                      Fotoğraflar
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {parsePhotoUrls(selectedLead.photo_urls)
-                        .slice(0, 9)
-                        .map((photo, index) => (
-                          <a
-                            key={`${photo}-${index}`}
-                            href={photo}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-square overflow-hidden rounded-lg border border-zinc-200 transition-colors hover:border-zinc-300"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={photo}
-                              alt={`Photo ${index + 1}`}
-                              className="h-full w-full object-cover"
-                            />
-                          </a>
-                        ))}
-                    </div>
-                    {parsePhotoUrls(selectedLead.photo_urls).length > 9 && (
-                      <p className="mt-2 text-center text-xs text-zinc-500">
-                        +{parsePhotoUrls(selectedLead.photo_urls).length - 9}{' '}
-                        daha
-                      </p>
+                    {parsePhotoUrls(selectedLead.photo_urls).length > 0 && (
+                      <div>
+                        <p className="mb-2 text-xs text-zinc-500">
+                          Son Paylaşımlar
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {parsePhotoUrls(selectedLead.photo_urls)
+                            .slice(0, 6)
+                            .map((photo, index) => (
+                              <a
+                                key={`${photo}-${index}`}
+                                href={photo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="aspect-square overflow-hidden rounded-lg border border-zinc-200 transition-colors hover:border-emerald-300"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={photo}
+                                  alt={`Post ${index + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                              </a>
+                            ))}
+                        </div>
+                        {parsePhotoUrls(selectedLead.photo_urls).length >
+                          6 && (
+                          <p className="mt-2 text-center text-xs text-zinc-500">
+                            +
+                            {parsePhotoUrls(selectedLead.photo_urls).length -
+                              6}{' '}
+                            daha
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
