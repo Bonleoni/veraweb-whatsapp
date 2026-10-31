@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "enrich:ig": "tsx --env-file=.env.local src/scripts/enrich-instagram.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@hapi/boom": "^10.0.1",
     "@supabase/supabase-js": "^2.118.0",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "apify-client": "^2.25.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.5.0",
@@ -39,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
