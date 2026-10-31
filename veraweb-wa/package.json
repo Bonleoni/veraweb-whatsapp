@@ -12,6 +12,7 @@
     "enrich:broken": "tsx --env-file=.env.local src/scripts/enrich-instagram-broken.ts",
     "enrich:avatars": "tsx --env-file=.env.local src/scripts/enrich-all-avatars.ts",
     "download:avatars": "tsx --env-file=.env.local src/scripts/download-avatars-to-storage.ts",
+    "download:all-avatars": "tsx --env-file=.env.local src/scripts/download-avatars-to-storage.ts",
     "fetch:missing-avatars": "tsx --env-file=.env.local src/scripts/fetch-missing-avatars.ts",
     "scrape:gmaps-ig": "tsx --env-file=.env.local src/scripts/scrape-google-maps-instagram.ts",
     "search:ig": "tsx --env-file=.env.local src/scripts/google-search-instagram.ts"

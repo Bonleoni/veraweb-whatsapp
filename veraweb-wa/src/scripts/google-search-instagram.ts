@@ -12,7 +12,7 @@ const SUPABASE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-const LIMIT = 100
+const LIMIT = 400
 const ACTOR_ID = 'apify/google-search-scraper'
 const MAX_RESULTS_TO_CHECK = 3
 
