@@ -96,7 +96,18 @@ function getItemQuery(item: SearchItem): string {
 }
 
 function isValidUsername(username: string) {
-  return Boolean(username) && !INVALID_USERNAMES.has(username) && username.length >= 2
+  if (!username || INVALID_USERNAMES.has(username) || username.length < 2) {
+    return false
+  }
+  // E-posta / domain kaçaklarını reddet
+  if (
+    username.includes('@') ||
+    /\.(com|net|org|io|co|tr|info|me)$/i.test(username) ||
+    username.includes('.com')
+  ) {
+    return false
+  }
+  return true
 }
 
 function extractUsernameFromUrl(url: string): string | null {
