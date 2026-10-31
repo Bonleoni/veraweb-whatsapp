@@ -33,7 +33,7 @@ import {
   ExternalLink,
   AlertCircle,
   Edit,
-  Instagram,
+  Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -1507,7 +1507,7 @@ function ConversationsPageContent() {
                         />
                       ) : (
                         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                          <Instagram className="h-8 w-8" />
+                          <Camera className="h-8 w-8" />
                         </div>
                       )}
                       {getInstagramUsername(selectedLead) && (
