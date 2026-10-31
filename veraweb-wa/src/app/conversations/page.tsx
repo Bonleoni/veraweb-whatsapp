@@ -100,6 +100,13 @@ function parsePhotoUrls(value: Lead['photo_urls']): string[] {
   return [];
 }
 
+/** Instagram CDN hotlink engelini aşmak için sunucu proxy */
+function proxiedMediaUrl(url?: string | null) {
+  if (!url) return '';
+  if (url.startsWith('/api/media/proxy')) return url;
+  return `/api/media/proxy?url=${encodeURIComponent(url)}`;
+}
+
 function getInstagramUsername(lead: Lead): string | null {
   if (lead.instagram_username?.trim()) {
     return lead.instagram_username.replace(/^@/, '').trim();
@@ -1501,15 +1508,31 @@ function ConversationsPageContent() {
                       {selectedLead.instagram_profile_pic_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={selectedLead.instagram_profile_pic_url}
+                          src={proxiedMediaUrl(
+                            selectedLead.instagram_profile_pic_url
+                          )}
                           alt="Profile"
+                          referrerPolicy="no-referrer"
                           className="h-16 w-16 rounded-full border-2 border-emerald-200 object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            el.style.display = 'none';
+                            const fallback = el.nextElementSibling;
+                            if (fallback instanceof HTMLElement) {
+                              fallback.classList.remove('hidden');
+                            }
+                          }}
                         />
-                      ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                          <Camera className="h-8 w-8" />
-                        </div>
-                      )}
+                      ) : null}
+                      <div
+                        className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white ${
+                          selectedLead.instagram_profile_pic_url
+                            ? 'hidden'
+                            : ''
+                        }`}
+                      >
+                        <Camera className="h-8 w-8" />
+                      </div>
                       {getInstagramUsername(selectedLead) && (
                         <div>
                           <p className="text-sm font-semibold text-zinc-950">
@@ -1583,13 +1606,17 @@ function ConversationsPageContent() {
                                 href={photo}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="aspect-square overflow-hidden rounded-lg border border-zinc-200 transition-colors hover:border-emerald-300"
+                                className="aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 transition-colors hover:border-emerald-300"
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={photo}
+                                  src={proxiedMediaUrl(photo)}
                                   alt={`Post ${index + 1}`}
+                                  referrerPolicy="no-referrer"
                                   className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.opacity = '0.25';
+                                  }}
                                 />
                               </a>
                             ))}
