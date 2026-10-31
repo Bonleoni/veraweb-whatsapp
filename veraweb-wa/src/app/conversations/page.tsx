@@ -76,6 +76,7 @@ interface Lead {
   instagram_post_count?: number | null;
   instagram_bio?: string | null;
   instagram_profile_pic_url?: string | null;
+  photo_url?: string | null;
   photo_urls?: string[] | string | null;
   website?: string | null;
   website_type?: string | null;
@@ -104,7 +105,27 @@ function parsePhotoUrls(value: Lead['photo_urls']): string[] {
 function proxiedMediaUrl(url?: string | null) {
   if (!url) return '';
   if (url.startsWith('/api/media/proxy')) return url;
+  // Supabase storage / kendi domain — proxy gerekmez
+  if (
+    url.includes('supabase.co/storage') ||
+    url.startsWith('/') ||
+    url.startsWith('data:')
+  ) {
+    return url;
+  }
   return `/api/media/proxy?url=${encodeURIComponent(url)}`;
+}
+
+/** Liste/detay için avatar: IG profil > işletme photo_url */
+function leadAvatarUrl(lead: {
+  instagram_profile_pic_url?: string | null;
+  photo_url?: string | null;
+}) {
+  const ig = lead.instagram_profile_pic_url?.trim();
+  if (ig) return proxiedMediaUrl(ig);
+  const photo = lead.photo_url?.trim();
+  if (photo) return proxiedMediaUrl(photo);
+  return '';
 }
 
 function getInstagramUsername(lead: Lead): string | null {
@@ -930,17 +951,26 @@ function ConversationsPageContent() {
                       }`}
                     >
                       <div className="relative size-10 shrink-0">
-                        {lead.instagram_profile_pic_url ? (
+                        {leadAvatarUrl(lead) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={proxiedMediaUrl(
-                              lead.instagram_profile_pic_url
-                            )}
+                            src={leadAvatarUrl(lead)}
                             alt={businessName}
                             referrerPolicy="no-referrer"
                             className="size-full rounded-full border border-zinc-200 object-cover"
                             onError={(e) => {
                               const img = e.currentTarget;
+                              // IG bozulursa photo_url dene
+                              const fallbackPhoto = lead.photo_url?.trim();
+                              const current = img.getAttribute('src') || '';
+                              if (
+                                fallbackPhoto &&
+                                lead.instagram_profile_pic_url &&
+                                current.includes('media/proxy')
+                              ) {
+                                img.src = proxiedMediaUrl(fallbackPhoto);
+                                return;
+                              }
                               img.style.display = 'none';
                               const fallback = img.nextElementSibling;
                               if (fallback instanceof HTMLElement) {
@@ -951,7 +981,7 @@ function ConversationsPageContent() {
                         ) : null}
                         <div
                           className={`flex size-full items-center justify-center rounded-full text-xs font-semibold ${
-                            lead.instagram_profile_pic_url ? 'hidden' : ''
+                            leadAvatarUrl(lead) ? 'hidden' : ''
                           } ${
                             unknown
                               ? 'bg-zinc-200 text-zinc-600'
@@ -1422,19 +1452,28 @@ function ConversationsPageContent() {
 
                         <div className="border-b border-zinc-200 bg-gradient-to-b from-purple-50/50 to-white p-6">
                           <div className="mb-4 flex items-center gap-4">
-                            {selectedLead.instagram_profile_pic_url ? (
+                            {leadAvatarUrl(selectedLead) ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={proxiedMediaUrl(
-                                  selectedLead.instagram_profile_pic_url
-                                )}
+                                src={leadAvatarUrl(selectedLead)}
                                 alt="Profile"
                                 referrerPolicy="no-referrer"
                                 className="h-24 w-24 rounded-full border-4 border-white object-cover shadow-lg"
                                 onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const fallback = e.currentTarget
-                                    .nextElementSibling;
+                                  const img = e.currentTarget;
+                                  const fallbackPhoto =
+                                    selectedLead.photo_url?.trim();
+                                  const current = img.getAttribute('src') || '';
+                                  if (
+                                    fallbackPhoto &&
+                                    selectedLead.instagram_profile_pic_url &&
+                                    current.includes('media/proxy')
+                                  ) {
+                                    img.src = proxiedMediaUrl(fallbackPhoto);
+                                    return;
+                                  }
+                                  img.style.display = 'none';
+                                  const fallback = img.nextElementSibling;
                                   if (fallback instanceof HTMLElement) {
                                     fallback.classList.remove('hidden');
                                   }
@@ -1443,9 +1482,7 @@ function ConversationsPageContent() {
                             ) : null}
                             <div
                               className={`flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
-                                selectedLead.instagram_profile_pic_url
-                                  ? 'hidden'
-                                  : ''
+                                leadAvatarUrl(selectedLead) ? 'hidden' : ''
                               }`}
                             >
                               <Camera className="h-12 w-12" />

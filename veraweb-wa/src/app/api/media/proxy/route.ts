@@ -1,13 +1,19 @@
 import { connection, NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_HOST_RE =
-  /(^|\.)(cdninstagram\.com|fbcdn\.net|instagram\.com)$/i
-
 function isAllowedImageUrl(raw: string) {
   try {
     const url = new URL(raw)
     if (url.protocol !== 'https:') return false
-    return ALLOWED_HOST_RE.test(url.hostname)
+    const host = url.hostname.toLowerCase()
+    return (
+      host === 'instagram.com' ||
+      host.endsWith('.instagram.com') ||
+      host.endsWith('.cdninstagram.com') ||
+      host.endsWith('.fbcdn.net') ||
+      host.endsWith('.fna.fbcdn.net') ||
+      host.includes('fbcdn.net') ||
+      host.endsWith('.supabase.co')
+    )
   } catch {
     return false
   }
