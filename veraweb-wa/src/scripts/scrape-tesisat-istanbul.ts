@@ -50,6 +50,7 @@ type GmapsItem = {
   phone?: string | null
   phoneUnformatted?: string | null
   phones?: string[] | null
+  placeId?: string | null
   address?: string | null
   street?: string | null
   city?: string | null
@@ -159,47 +160,58 @@ async function scrapeTesisatIstanbul() {
   console.log(
     `💰 Tahmini üst sınır: ${searchQueries.length * MAX_PER_SEARCH} sonuç (max ${MAX_PER_SEARCH}/sorgu)`
   )
-  console.log('⏳ Apify çalıştırılıyor, bu işlem 5–15 dakika sürebilir...')
 
-  const run = await apifyClient.actor(ACTOR_ID).call(
-    {
-      searchStringsArray: searchQueries,
-      maxCrawledPlacesPerSearch: MAX_PER_SEARCH,
-      language: 'tr',
-      countryCode: 'tr',
-      skipClosedPlaces: true,
-      scrapeContacts: false,
-      maxReviews: 0,
-      maxImages: 0,
-      maxQuestions: 0,
-    },
-    { waitSecs: 60 * 45 }
-  )
+  const existingDatasetId = process.env.TESISAT_DATASET_ID?.trim()
+  let datasetId = existingDatasetId || ''
 
-  if (!run?.defaultDatasetId) {
-    console.error('❌ Dataset ID alınamadı')
-    process.exit(1)
+  if (datasetId) {
+    console.log(`♻️ Mevcut dataset yeniden işleniyor: ${datasetId}`)
+  } else {
+    console.log('⏳ Apify çalıştırılıyor, bu işlem 5–15 dakika sürebilir...')
+
+    const run = await apifyClient.actor(ACTOR_ID).call(
+      {
+        searchStringsArray: searchQueries,
+        maxCrawledPlacesPerSearch: MAX_PER_SEARCH,
+        language: 'tr',
+        countryCode: 'tr',
+        skipClosedPlaces: true,
+        scrapeContacts: false,
+        maxReviews: 0,
+        maxImages: 0,
+        maxQuestions: 0,
+      },
+      { waitSecs: 60 * 45 }
+    )
+
+    if (!run?.defaultDatasetId) {
+      console.error('❌ Dataset ID alınamadı')
+      process.exit(1)
+    }
+    datasetId = run.defaultDatasetId
+    console.log('✅ Tarama tamamlandı. Sonuçlar çekiliyor...')
   }
 
-  console.log('✅ Tarama tamamlandı. Sonuçlar çekiliyor...')
-
   const { items } = await apifyClient
-    .dataset(run.defaultDatasetId)
+    .dataset(datasetId)
     .listItems({ limit: 10_000 })
 
   console.log(`📦 Apify sonuç sayısı: ${items.length}`)
 
-  // Mevcut telefonları önceden yükle (hızlı dedupe)
-  const { data: existingPhones } = await supabase
+  // Mevcut telefon + lead_number dedupe
+  const { data: existingRows } = await supabase
     .from('leads')
-    .select('phone')
-    .not('phone', 'is', null)
-    .limit(5000)
+    .select('phone, lead_number')
+    .limit(8000)
 
   const phoneSet = new Set<string>()
-  for (const row of existingPhones || []) {
+  const leadNumberSet = new Set<string>()
+  for (const row of existingRows || []) {
     const last10 = phoneLast10(row.phone)
     if (last10.length >= 10) phoneSet.add(last10)
+    const lnLast10 = phoneLast10(row.lead_number)
+    if (lnLast10.length >= 10) phoneSet.add(lnLast10)
+    if (row.lead_number) leadNumberSet.add(String(row.lead_number))
   }
 
   let savedCount = 0
@@ -226,6 +238,16 @@ async function scrapeTesisatIstanbul() {
       continue
     }
 
+    // google_maps importlarıyla uyumlu unique lead_number
+    const leadNumber =
+      phone ||
+      (raw.placeId ? `TESISAT_${raw.placeId}` : `TESISAT_${last10}_${Date.now()}`)
+
+    if (leadNumberSet.has(leadNumber)) {
+      skippedCount++
+      continue
+    }
+
     const website = pickWebsite(raw)
     const hasWebsite = Boolean(website)
     const district = pickDistrict(raw, raw.searchString)
@@ -243,6 +265,7 @@ async function scrapeTesisatIstanbul() {
           : null
 
     const { error } = await supabase.from('leads').insert({
+      lead_number: leadNumber,
       business_name: title,
       phone,
       city: 'İstanbul',
@@ -265,6 +288,7 @@ async function scrapeTesisatIstanbul() {
 
     seenInBatch.add(last10)
     phoneSet.add(last10)
+    leadNumberSet.add(leadNumber)
     savedCount++
     console.log(
       `✅ Eklendi: ${title}${hasWebsite ? ' (Web Sitesi Var)' : ''}`
