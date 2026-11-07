@@ -15,7 +15,8 @@
     "download:all-avatars": "tsx --env-file=.env.local src/scripts/download-avatars-to-storage.ts",
     "fetch:missing-avatars": "tsx --env-file=.env.local src/scripts/fetch-missing-avatars.ts",
     "scrape:gmaps-ig": "tsx --env-file=.env.local src/scripts/scrape-google-maps-instagram.ts",
-    "search:ig": "tsx --env-file=.env.local src/scripts/google-search-instagram.ts"
+    "search:ig": "tsx --env-file=.env.local src/scripts/google-search-instagram.ts",
+    "scrape:tesisat": "tsx --env-file=.env.local src/scripts/scrape-tesisat-istanbul.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
