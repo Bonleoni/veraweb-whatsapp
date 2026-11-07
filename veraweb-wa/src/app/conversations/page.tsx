@@ -76,6 +76,7 @@ interface Lead {
   instagram_post_count?: number | null;
   instagram_bio?: string | null;
   instagram_profile_pic_url?: string | null;
+  whatsapp_profile_pic_url?: string | null;
   photo_url?: string | null;
   photo_urls?: string[] | string | null;
   website?: string | null;
@@ -116,12 +117,26 @@ function getSafeImageUrl(url: string | null | undefined, _size = 128) {
   return `/api/proxy-instagram-image?url=${encodeURIComponent(raw)}`;
 }
 
-/** Liste/detay avatar: YALNIZCA instagram_profile_pic_url */
+/** Liste/detay avatar: önce WhatsApp, sonra Instagram */
+function leadAvatarSource(lead: {
+  whatsapp_profile_pic_url?: string | null
+  instagram_profile_pic_url?: string | null
+}) {
+  return (
+    lead.whatsapp_profile_pic_url?.trim() ||
+    lead.instagram_profile_pic_url?.trim() ||
+    null
+  )
+}
+
 function leadProfilePicUrl(
-  lead: { instagram_profile_pic_url?: string | null },
+  lead: {
+    whatsapp_profile_pic_url?: string | null
+    instagram_profile_pic_url?: string | null
+  },
   size = 128
 ) {
-  return getSafeImageUrl(lead.instagram_profile_pic_url, size) || '';
+  return getSafeImageUrl(leadAvatarSource(lead), size) || '';
 }
 
 function proxiedMediaUrl(url?: string | null) {
@@ -1077,7 +1092,7 @@ function ConversationsPageContent() {
                         ) : null}
                         <div
                           className={`avatar-fallback absolute inset-0 size-full items-center justify-center rounded-full text-xs font-semibold ${
-                            lead.instagram_profile_pic_url ? 'hidden' : 'flex'
+                            leadAvatarSource(lead) ? 'hidden' : 'flex'
                           } ${
                             unknown
                               ? 'bg-zinc-200 text-zinc-600'
@@ -1569,7 +1584,7 @@ function ConversationsPageContent() {
                               ) : null}
                               <div
                                 className={`profile-avatar-fallback absolute inset-0 h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-500 text-white shadow-lg ${
-                                  selectedLead.instagram_profile_pic_url
+                                  leadAvatarSource(selectedLead)
                                     ? 'hidden'
                                     : 'flex'
                                 }`}

@@ -10,6 +10,8 @@ function isAllowedImageUrl(raw: string) {
       host.endsWith('.instagram.com') ||
       host.includes('cdninstagram.com') ||
       host.includes('fbcdn.net') ||
+      host.includes('whatsapp.net') ||
+      host.includes('whatsapp.com') ||
       host.endsWith('.supabase.co')
     )
   } catch {

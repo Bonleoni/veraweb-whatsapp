@@ -37,6 +37,10 @@ yarn-error.log*
 .wa-auth/
 auth_info_baileys/
 
+# WhatsApp Web.js session
+.wwebjs_auth/
+.wwebjs_cache/
+
 # vercel
 .vercel
 
