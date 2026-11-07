@@ -40,6 +40,7 @@ auth_info_baileys/
 # WhatsApp Web.js session
 .wwebjs_auth/
 .wwebjs_cache/
+whatsapp-qr.png
 
 # vercel
 .vercel

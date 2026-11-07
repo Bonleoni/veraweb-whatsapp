@@ -17,7 +17,9 @@
     "scrape:gmaps-ig": "tsx --env-file=.env.local src/scripts/scrape-google-maps-instagram.ts",
     "search:ig": "tsx --env-file=.env.local src/scripts/google-search-instagram.ts",
     "scrape:tesisat": "tsx --env-file=.env.local src/scripts/scrape-tesisat-istanbul.ts",
-    "fetch:wa-avatars": "tsx --env-file=.env.local src/scripts/fetch-whatsapp-avatars.ts"
+    "fetch:wa-avatars": "tsx --env-file=.env.local src/scripts/fetch-whatsapp-avatars.ts",
+    "fetch:wa-avatars:health": "tsx --env-file=.env.local src/scripts/fetch-whatsapp-avatars.ts",
+    "report:avatars": "tsx --env-file=.env.local src/scripts/avatar-status-report.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
